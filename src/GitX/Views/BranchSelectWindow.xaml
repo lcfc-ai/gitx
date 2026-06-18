@@ -10,48 +10,10 @@
                     Height="520"
                     Width="520"
                     WindowStartupLocation="CenterScreen"
-                    Style="{DynamicResource ChromeWindow}"
                     Background="{DynamicResource BgBrush}"
                     Foreground="{DynamicResource TextBrush}"
                     FontFamily="{DynamicResource GlobalFont}"
                     FontSize="13">
-    <views:ThemedWindow.Resources>
-        <Style x:Key="BranchListItem" TargetType="ListViewItem">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListViewItem">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
-                            <ContentPresenter Margin="{TemplateBinding Padding}" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                </Trigger>
-                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                    <Setter Property="IsEnabled" Value="False" />
-                    <Setter Property="Opacity" Value="0.4" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-    </views:ThemedWindow.Resources>
-
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
                             CornerRadius="6"
@@ -123,7 +85,6 @@
                 <Grid>
                     <ListView ItemsSource="{Binding FilteredBranches}"
                               SelectedItem="{Binding SelectedBranch}"
-                              ItemContainerStyle="{StaticResource BranchListItem}"
                               Background="Transparent"
                               BorderThickness="0"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -177,14 +138,12 @@
             <Button Grid.Column="1"
                     Content="取消"
                     Command="{Binding CancelCommand}"
-                    Style="{DynamicResource BaseButton}"
                     Margin="0,0,8,0"
                     IsCancel="True"
                     Click="OnCancelClick" />
             <Button Grid.Column="2"
                     Content="确认对比"
                     Command="{Binding ConfirmCommand}"
-                    Style="{DynamicResource BaseButton}"
                     IsDefault="True"
                     Click="OnConfirmClick" />
         </Grid>

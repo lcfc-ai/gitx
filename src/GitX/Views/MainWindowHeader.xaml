@@ -1,0 +1,150 @@
+<UserControl
+    x:Class="GitX.Views.MainWindowHeader"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:services="clr-namespace:GitX.Services"
+    xmlns:views="clr-namespace:GitX.Views"
+    Height="Auto">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border
+            Padding="10,6"
+            Background="{DynamicResource BgBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1"
+            MouseLeftButtonDown="OnChromeMouseDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <Border
+                        Width="26"
+                        Height="26"
+                        Margin="0,0,10,0"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            FontWeight="Bold"
+                            Foreground="{DynamicResource AccentBrush}"
+                            Text="G" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource TextBrush}"
+                            Text="GitX 分支对比" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,6,0"
+                        Click="OnMinimizeClick"
+                        Content="─" />
+                    <Button
+                        Margin="0,0,6,0"
+                        Click="OnToggleMaximizeClick"
+                        Content="▢" />
+                    <Button
+                        Click="OnCloseClick"
+                        Content="×"
+                        Style="{DynamicResource ChromeCloseButton}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="1"
+            Padding="12,8"
+            Background="{DynamicResource Bg2Brush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border
+                        Margin="0,0,8,0"
+                        Padding="6,2"
+                        Background="{DynamicResource Bg3Brush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <TextBlock
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource AccentBrush}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            TextAlignment="Center"
+                            Text="{Binding CurrentBranchDisplay}" />
+                    </Border>
+
+                    <Border
+                        Margin="0,0,12,0"
+                        Padding="6,2"
+                        Background="{DynamicResource Bg3Brush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <TextBlock
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource Accent2Brush}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            TextAlignment="Center"
+                            Text="{Binding TargetBranchDisplay}" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+                    <Border
+                        Margin="0,0,8,0"
+                        Padding="8,2"
+                        Background="{DynamicResource Bg3Brush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource TextDimBrush}"
+                            Text="主题" />
+                    </Border>
+                    <ComboBox
+                        x:Name="ThemeSelector"
+                        Width="156"
+                        Margin="0,0,12,0"
+                        SelectionChanged="OnThemeSelectionChanged" />
+                    <Button
+                        Margin="0,0,8,0"
+                        Command="{Binding RefreshDiffCommand}"
+                        Content="🔄 刷新" />
+                    <Button
+                        Command="{Binding OverwriteAllFilesCommand}"
+                        Content="⬇ 全部下载" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

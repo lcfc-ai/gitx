@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:helpers="clr-namespace:GitX.Core.Helpers">
+    <helpers:BoolToBranchIconConverter x:Key="BoolToBranchIcon" />
+    <helpers:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+    <helpers:NullToVisibilityConverter x:Key="NullToVisibility" />
+</ResourceDictionary>

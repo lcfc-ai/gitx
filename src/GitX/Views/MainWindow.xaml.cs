@@ -1,7 +1,5 @@
 using GitX.ViewModels;
-using GitX.Services;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -11,17 +9,12 @@ public partial class MainWindow : ThemedWindow
 {
     private MainWindowViewModel? _viewModel;
     private bool _diffHighlighterSetup;
-    private bool _isThemeSelectionSyncing;
     private readonly UnifiedDiffHighlighter _diffHighlighter;
 
     public MainWindow()
     {
         InitializeComponent();
         _diffHighlighter = new UnifiedDiffHighlighter(() => _viewModel?.UnifiedDiffRows ?? Array.Empty<GitX.Core.Models.UnifiedDiffRow>());
-        ThemeSelector.ItemsSource = ThemeManager.Themes;
-        ThemeSelector.DisplayMemberPath = nameof(ThemeDefinition.DisplayName);
-        ThemeSelector.SelectedValuePath = nameof(ThemeDefinition.Key);
-        ThemeSelector.SelectedValue = ThemeManager.CurrentThemeKey;
         Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -31,7 +24,6 @@ public partial class MainWindow : ThemedWindow
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Dispatcher.BeginInvoke(SetupDiffHighlighter, DispatcherPriority.Loaded);
-        SyncThemeSelection();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -102,47 +94,6 @@ public partial class MainWindow : ThemedWindow
         }
     }
 
-    private void OnTreeSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        if (_viewModel != null && e.NewValue is GitX.Core.Models.DiffTreeModel node)
-        {
-            _viewModel.SelectedTreeNode = node;
-        }
-    }
-
-    private void OnDiffTreeItemRowMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        var item = sender as TreeViewItem
-            ?? (sender as FrameworkElement)?.TemplatedParent as TreeViewItem;
-
-        if (item == null)
-        {
-            return;
-        }
-
-        if (item.DataContext is not GitX.Core.Models.DiffTreeModel node)
-        {
-            return;
-        }
-
-        // 文件节点：单击就明确选中，触发右侧差异加载。
-        if (node.IsFile || node.Children.Count == 0)
-        {
-            item.IsSelected = true;
-            if (_viewModel != null && !ReferenceEquals(_viewModel.SelectedTreeNode, node))
-            {
-                _viewModel.SelectedTreeNode = node;
-            }
-
-            return;
-        }
-
-        // 文件夹节点：单击直接展开/收起，不再依赖双击。
-        item.IsSelected = true;
-        item.IsExpanded = !item.IsExpanded;
-        e.Handled = true;
-    }
-
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (_viewModel == null) return;
@@ -164,49 +115,15 @@ public partial class MainWindow : ThemedWindow
 
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.F)
         {
-            TreeFilterBox.Focus();
-            TreeFilterBox.SelectAll();
+            DiffTreePaneControl.FocusFilterBox();
             e.Handled = true;
             return;
         }
 
-        if (e.Key == Key.Escape && TreeFilterBox.IsKeyboardFocusWithin && !string.IsNullOrEmpty(TreeFilterBox.Text))
+        if (e.Key == Key.Escape && DiffTreePaneControl.IsKeyboardFocusWithin)
         {
-            TreeFilterBox.Clear();
-            TreeFilterBox.Focus();
+            DiffTreePaneControl.FocusFilterBox();
             e.Handled = true;
-        }
-    }
-
-    private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isThemeSelectionSyncing)
-        {
-            return;
-        }
-
-        if (ThemeSelector.SelectedValue is string themeKey)
-        {
-            ThemeManager.ApplyTheme(themeKey);
-            SyncThemeSelection();
-        }
-    }
-
-    private void SyncThemeSelection()
-    {
-        if (ThemeSelector == null)
-        {
-            return;
-        }
-
-        try
-        {
-            _isThemeSelectionSyncing = true;
-            ThemeSelector.SelectedValue = ThemeManager.CurrentThemeKey;
-        }
-        finally
-        {
-            _isThemeSelectionSyncing = false;
         }
     }
 
@@ -217,25 +134,5 @@ public partial class MainWindow : ThemedWindow
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
         (_viewModel as IDisposable)?.Dispose();
-    }
-
-    private void OnChromeMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        HandleChromeMouseDown(sender, e);
-    }
-
-    private void OnMinimizeClick(object sender, RoutedEventArgs e)
-    {
-        MinimizeWindow();
-    }
-
-    private void OnToggleMaximizeClick(object sender, RoutedEventArgs e)
-    {
-        ToggleWindowState();
-    }
-
-    private void OnCloseClick(object sender, RoutedEventArgs e)
-    {
-        CloseWindow();
     }
 }

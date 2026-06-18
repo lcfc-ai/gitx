@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ae="http://icsharpcode.net/sharpdevelop/avalonedit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:effects="clr-namespace:System.Windows.Media.Effects;assembly=PresentationCore"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:model="clr-namespace:GitX.Core.Models"
     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -20,7 +19,6 @@
     FontFamily="{DynamicResource GlobalFont}"
     FontSize="13"
     Foreground="{DynamicResource TextBrush}"
-    Style="{DynamicResource ChromeWindow}"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None"
     mc:Ignorable="d">
@@ -34,632 +32,8 @@
             ResizeBorderThickness="6" />
     </shell:WindowChrome.WindowChrome>
 
-    <Window.Resources>
-        <!--  文件/文件夹图标转换器  -->
-        <helpers:FileFolderIconConverter xmlns:helpers="clr-namespace:GitX.Core.Helpers" x:Key="FileFolderIcon" />
-
-        <effects:DropShadowEffect
-            x:Key="SoftPanelShadow"
-            BlurRadius="14"
-            Opacity="0.55"
-            ShadowDepth="1"
-            Color="#55000000" />
-        <effects:DropShadowEffect
-            x:Key="FloatingShadow"
-            BlurRadius="18"
-            Opacity="0.6"
-            ShadowDepth="2"
-            Color="#66000000" />
-
-        <Style x:Key="CenteredBadgeText" TargetType="TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="TextWrapping" Value="NoWrap" />
-        </Style>
-
-        <Style x:Key="TreeContextMenuStyle" TargetType="ContextMenu">
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="3" />
-            <Setter Property="HasDropShadow" Value="True" />
-        </Style>
-
-        <Style x:Key="TreeMenuSeparatorStyle" TargetType="Separator">
-            <Setter Property="Margin" Value="10,6" />
-            <Setter Property="Height" Value="1" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Separator">
-                        <Border Background="{DynamicResource BorderBrush}" Height="1" Opacity="0.7" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="TreeMenuItemStyle" TargetType="MenuItem">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="Root"
-                                Background="Transparent"
-                                BorderBrush="Transparent"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                SnapsToDevicePixels="True">
-                            <Grid Margin="2,1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="20" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border x:Name="IconChrome"
-                                        Width="18"
-                                        Height="18"
-                                        Background="Transparent"
-                                        BorderBrush="Transparent"
-                                        BorderThickness="0"
-                                        CornerRadius="4"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center">
-                                    <ContentPresenter
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        ContentSource="Icon" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="6,0,6,0" VerticalAlignment="Center">
-                                    <ContentPresenter ContentSource="Header" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
-                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource MenuBorderBrush}" />
-                                <Setter TargetName="IconChrome" Property="Background" Value="{DynamicResource Surface2Brush}" />
-                                <Setter TargetName="IconChrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                                <Setter TargetName="IconChrome" Property="BorderThickness" Value="1" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CompactComboBoxItemStyle" TargetType="ComboBoxItem">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="Padding" Value="8,5" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBoxItem">
-                        <Border
-                            x:Name="Root"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="4"
-                            SnapsToDevicePixels="True">
-                            <ContentPresenter Margin="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="CompactComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Background" Value="{DynamicResource Bg3Brush}" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,4,28,4" />
-            <Setter Property="MaxDropDownHeight" Value="160" />
-            <Setter Property="OverridesDefaultStyle" Value="True" />
-            <Setter Property="Focusable" Value="True" />
-            <Setter Property="IsEditable" Value="False" />
-            <Setter Property="IsTextSearchEnabled" Value="False" />
-            <Setter Property="ItemContainerStyle" Value="{StaticResource CompactComboBoxItemStyle}" />
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton
-                                x:Name="ToggleButton"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Focusable="False"
-                                IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                                <Border
-                                    x:Name="Root"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6"
-                                    SnapsToDevicePixels="True">
-                                    <Grid>
-                                        <ContentPresenter
-                                            Margin="{TemplateBinding Padding}"
-                                            VerticalAlignment="Center"
-                                            HorizontalAlignment="Left"
-                                            Content="{TemplateBinding SelectionBoxItem}" />
-                                        <Path
-                                            Width="8"
-                                            Height="8"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,10,0"
-                                            Fill="{DynamicResource TextDimBrush}"
-                                            Data="M 0 0 L 4 4 L 8 0 Z" />
-                                    </Grid>
-                                </Border>
-                            </ToggleButton>
-                            <Popup
-                                x:Name="Popup"
-                                AllowsTransparency="True"
-                                Focusable="False"
-                                IsOpen="{TemplateBinding IsDropDownOpen}"
-                                PopupAnimation="Fade"
-                                Placement="Bottom"
-                                PlacementTarget="{Binding ElementName=ToggleButton}">
-                                <Border
-                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                    Margin="0,4,0,0"
-                                    Background="{DynamicResource SurfaceBrush}"
-                                    BorderBrush="{DynamicResource BorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    SnapsToDevicePixels="True">
-                                    <ScrollViewer CanContentScroll="True">
-                                        <ItemsPresenter />
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!--  TreeView 展开箭头  -->
-        <Style x:Key="TreeExpanderToggleStyle" TargetType="ToggleButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Width" Value="16" />
-            <Setter Property="Height" Value="16" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Grid Background="Transparent">
-                            <Path
-                                x:Name="Arrow"
-                                Width="8"
-                                Height="8"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Data="M 0 0 L 0 8 L 5 4 Z"
-                                Fill="{DynamicResource TextDimBrush}"
-                                RenderTransformOrigin="0.5,0.5">
-                                <Path.RenderTransform>
-                                    <RotateTransform Angle="0" />
-                                </Path.RenderTransform>
-                            </Path>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Arrow" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="90" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Arrow" Property="Fill" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Arrow" Property="Opacity" Value="0.4" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!--  文件/文件夹 TreeView 数据模板  -->
-        <HierarchicalDataTemplate DataType="{x:Type model:DiffTreeModel}" ItemsSource="{Binding Children}">
-            <Grid HorizontalAlignment="Stretch" ToolTip="{Binding FullPath}">
-                <Grid.ContextMenu>
-                    <ContextMenu Style="{StaticResource TreeContextMenuStyle}">
-                        <MenuItem
-                            Style="{StaticResource TreeMenuItemStyle}"
-                            Command="{Binding DataContext.OverwriteSelectedFileCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
-                            Header="覆盖此文件"
-                            Icon="⬇"
-                            Visibility="{Binding IsFile, Converter={StaticResource BoolToVisibility}}" />
-                        <MenuItem
-                            Style="{StaticResource TreeMenuItemStyle}"
-                            Command="{Binding DataContext.OverwriteSelectedFolderCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
-                            Header="覆盖整个文件夹"
-                            Icon="⬇"
-                            Visibility="{Binding IsFile, Converter={StaticResource InverseBoolToVisibility}}" />
-                        <Separator Style="{StaticResource TreeMenuSeparatorStyle}" />
-                        <MenuItem
-                            Style="{StaticResource TreeMenuItemStyle}"
-                            Command="{Binding DataContext.RefreshDiffCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
-                            Header="刷新差异"
-                            Icon="↻" />
-                    </ContextMenu>
-                </Grid.ContextMenu>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Grid.Column="0"
-                    Margin="0,0,6,0"
-                    VerticalAlignment="Center"
-                    FontSize="12"
-                    Foreground="{Binding ChangeTypeColor}"
-                    Text="{Binding IsFile, Converter={StaticResource FileFolderIcon}}" />
-                <TextBlock
-                    Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Text="{Binding Name}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="FontSize" Value="12" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
-                            <Setter Property="Foreground" Value="{Binding DisplayForegroundColor}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsFile}" Value="True">
-                                    <Setter Property="FontSize" Value="11.5" />
-                                    <Setter Property="FontWeight" Value="Normal" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsFile}" Value="False">
-                                    <Setter Property="FontSize" Value="12.5" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-                <StackPanel
-                    Grid.Column="2"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal">
-                    <Border
-                        Margin="4,0,4,0"
-                        Padding="6,1"
-                        Background="{Binding BadgeBackgroundColor}"
-                        BorderBrush="{Binding ChangeTypeColor}"
-                        BorderThickness="1"
-                        CornerRadius="5"
-                        Visibility="{Binding IsFile, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="{Binding ChangeTypeColor}"
-                            Style="{StaticResource CenteredBadgeText}"
-                            Text="{Binding ChangeTypeCode}" />
-                    </Border>
-                    <Border
-                        Margin="4,0,0,0"
-                        Padding="6,1"
-                        Background="{Binding FolderStatsBackgroundColor}"
-                        BorderBrush="{Binding FolderStatsColor}"
-                        BorderThickness="1"
-                        CornerRadius="5"
-                        Visibility="{Binding IsFile, Converter={StaticResource InverseBoolToVisibility}}">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="{Binding FolderStatsColor}"
-                            Style="{StaticResource CenteredBadgeText}"
-                            Text="{Binding FolderStatsSummary}" />
-                    </Border>
-                </StackPanel>
-            </Grid>
-        </HierarchicalDataTemplate>
-
-        <!--  TreeViewItem 样式  -->
-        <Style x:Key="DiffTreeItem" TargetType="TreeViewItem">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,1,0,1" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TreeViewItem">
-                        <Grid Background="Transparent" SnapsToDevicePixels="True">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <Border
-                                x:Name="RowChrome"
-                                Grid.Row="0"
-                                Padding="1"
-                                Background="Transparent"
-                                BorderBrush="Transparent"
-                                BorderThickness="0"
-                                CornerRadius="4"
-                                MouseLeftButtonDown="OnDiffTreeItemRowMouseLeftButtonDown">
-                                <Grid MinHeight="28">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2" />
-                                        <ColumnDefinition Width="14" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <Border
-                                        x:Name="AccentBar"
-                                        Grid.Column="0"
-                                        Background="Transparent"
-                                        CornerRadius="4,0,0,4" />
-
-                                    <Path
-                                        x:Name="ExpanderGlyph"
-                                        Grid.Column="1"
-                                        Width="7"
-                                        Height="7"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Data="M 0 0 L 0 7 L 5 3.5 Z"
-                                        Fill="{DynamicResource TextDimBrush}"
-                                        RenderTransformOrigin="0.5,0.5">
-                                        <Path.RenderTransform>
-                                            <RotateTransform Angle="0" />
-                                        </Path.RenderTransform>
-                                    </Path>
-
-                                    <ContentPresenter
-                                        x:Name="PART_Header"
-                                        Grid.Column="2"
-                                        Margin="0"
-                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                        ContentSource="Header"
-                                        RecognizesAccessKey="True" />
-                                </Grid>
-                            </Border>
-
-                            <ItemsPresenter
-                                x:Name="ItemsHost"
-                                Grid.Row="1"
-                                Margin="12,1,0,0" />
-                        </Grid>
-
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="HasItems" Value="False">
-                                <Setter TargetName="ExpanderGlyph" Property="Visibility" Value="Hidden" />
-                            </Trigger>
-                            <Trigger Property="IsExpanded" Value="False">
-                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
-                            </Trigger>
-                            <Trigger Property="IsExpanded" Value="True">
-                                <Setter TargetName="ExpanderGlyph" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="90" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsFile}" Value="False" />
-                                    <Condition Binding="{Binding IsExpanded}" Value="True" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowExpandedBrush}" />
-                            </MultiDataTrigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowSelectedBrush}" />
-                                <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
-                            <Trigger Property="Selector.IsSelectionActive" Value="False">
-                                <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowInactiveSelectedBrush}" />
-                                <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsFile}" Value="False" />
-                        <Condition Binding="{Binding IsExpanded}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <!--  分隔条样式  -->
-        <Style x:Key="GridSplitterStyle" TargetType="GridSplitter">
-            <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="Width" Value="5" />
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="GridSplitter">
-                        <Border Width="{TemplateBinding Width}" Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
     <DockPanel>
-        <!--  自定义标题栏  -->
-        <Border
-            Padding="10,6"
-            Background="{DynamicResource BgBrush}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="0,0,0,1"
-            DockPanel.Dock="Top"
-            MouseLeftButtonDown="OnChromeMouseDown">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Orientation="Horizontal">
-                    <Border
-                        Width="26"
-                        Height="26"
-                        Margin="0,0,10,0"
-                        Background="{DynamicResource SurfaceBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="13"
-                            FontWeight="Bold"
-                            Foreground="{DynamicResource AccentBrush}"
-                            Text="G" />
-                    </Border>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource TextBrush}"
-                            Text="GitX 分支对比" />
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button
-                        Margin="0,0,6,0"
-                        Click="OnMinimizeClick"
-                        Content="─"
-                        Style="{DynamicResource ChromeButton}" />
-                    <Button
-                        Margin="0,0,6,0"
-                        Click="OnToggleMaximizeClick"
-                        Content="▢"
-                        Style="{DynamicResource ChromeButton}" />
-                    <Button
-                        Click="OnCloseClick"
-                        Content="×"
-                        Style="{DynamicResource ChromeCloseButton}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!--  顶部工具栏  -->
-        <Border
-            Padding="12,8"
-            Background="{DynamicResource Bg2Brush}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="0,0,0,1"
-            DockPanel.Dock="Top">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border
-                        Margin="0,0,8,0"
-                        Padding="6,2"
-                        Background="{DynamicResource Bg3Brush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                        <TextBlock
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource AccentBrush}"
-                            Style="{StaticResource CenteredBadgeText}"
-                            Text="{Binding CurrentBranchDisplay}" />
-                    </Border>
-
-                    <Border
-                        Margin="0,0,12,0"
-                        Padding="6,2"
-                        Background="{DynamicResource Bg3Brush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                        <TextBlock
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource Accent2Brush}"
-                            Style="{StaticResource CenteredBadgeText}"
-                            Text="{Binding TargetBranchDisplay}" />
-                    </Border>
-                </StackPanel>
-
-                <StackPanel
-                    Grid.Column="1"
-                    HorizontalAlignment="Right"
-                    Orientation="Horizontal">
-                    <Border
-                        Margin="0,0,8,0"
-                        Padding="8,2"
-                        Background="{DynamicResource Bg3Brush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                        <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource TextDimBrush}"
-                            Text="主题" />
-                    </Border>
-                    <ComboBox
-                        x:Name="ThemeSelector"
-                        Width="156"
-                        Margin="0,0,12,0"
-                        SelectionChanged="OnThemeSelectionChanged"
-                        Style="{DynamicResource CompactComboBoxStyle}" />
-                    <Button
-                        Margin="0,0,8,0"
-                        Command="{Binding RefreshDiffCommand}"
-                        Content="🔄 刷新"
-                        Style="{DynamicResource SmallButton}" />
-                    <Button
-                        Command="{Binding OverwriteAllFilesCommand}"
-                        Content="⬇ 全部下载"
-                        Style="{DynamicResource SmallButton}" />
-                </StackPanel>
-            </Grid>
-        </Border>
+        <views:MainWindowHeader DockPanel.Dock="Top" />
 
         <!--  底部状态栏  -->
         <Border
@@ -694,121 +68,10 @@
             </Grid.ColumnDefinitions>
 
             <!--  左侧：差异目录树  -->
-            <Border
-                Grid.Column="0"
-                Background="{DynamicResource Bg2Brush}"
-                BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="0,0,1,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!--  树头  -->
-                    <Border
-                        Grid.Row="0"
-                        Padding="10,10,10,7"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="0,0,0,1">
-                        <Grid>
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock
-                                        FontSize="11"
-                                        FontWeight="Bold"
-                                        Foreground="{DynamicResource TextDimBrush}"
-                                        Text="差异文件" />
-                                    <Border
-                                        Padding="5,1"
-                                        HorizontalAlignment="Right"
-                                        Background="{DynamicResource Surface2Brush}"
-                                        BorderBrush="{DynamicResource AccentBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="5">
-                                        <TextBlock
-                                            FontSize="9"
-                                            FontWeight="Bold"
-                                            Foreground="{DynamicResource AccentBrush}"
-                                            Style="{StaticResource CenteredBadgeText}"
-                                            Text="{Binding TotalChangeCount}" />
-                                    </Border>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!--  搜索栏  -->
-                    <Border
-                        Grid.Row="1"
-                        Margin="10,6,10,6"
-                        Padding="8,6"
-                        Background="{DynamicResource BgBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Effect="{StaticResource FloatingShadow}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                FontSize="14"
-                                Foreground="{DynamicResource TextDimBrush}"
-                                Text="⌕" />
-                            <Border
-                                Grid.Column="1"
-                                Margin="8,0,0,0"
-                                Padding="8,4"
-                                Background="{DynamicResource SurfaceBrush}"
-                                BorderBrush="{DynamicResource BorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="6">
-                                <TextBox
-                                    x:Name="TreeFilterBox"
-                                    Padding="0"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CaretBrush="{DynamicResource AccentBrush}"
-                                    FontSize="12"
-                                    Foreground="{DynamicResource TextBrush}"
-                                    Text="{Binding TreeFilterText, UpdateSourceTrigger=PropertyChanged}" />
-                            </Border>
-                            <Button
-                                Grid.Column="2"
-                                Width="24"
-                                Height="24"
-                                Margin="8,0,0,0"
-                                Command="{Binding ClearTreeFilterCommand}"
-                                Content="×"
-                                Style="{DynamicResource SmallButton}" />
-                        </Grid>
-                    </Border>
-
-                    <!--  工具栏  -->
-                    <!--  文件树  -->
-                    <TreeView
-                        Grid.Row="2"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        ItemContainerStyle="{StaticResource DiffTreeItem}"
-                        ItemsSource="{Binding DiffTreeRoot}"
-                        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                        SelectedItemChanged="OnTreeSelectedItemChanged"
-                        VirtualizingPanel.IsVirtualizing="True"
-                        VirtualizingPanel.VirtualizationMode="Recycling" />
-                </Grid>
-            </Border>
+            <views:DiffTreePane x:Name="DiffTreePaneControl" Grid.Column="0" />
 
             <!--  分隔条  -->
-            <GridSplitter
-                Grid.Column="1"
-                HorizontalAlignment="Stretch"
-                Style="{StaticResource GridSplitterStyle}" />
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" />
 
             <!--  右侧：双栏 Diff 编辑器  -->
             <Grid Grid.Column="2" Background="{DynamicResource BgBrush}">
@@ -858,7 +121,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
+                        <StackPanel Orientation="Horizontal">
                             <TextBlock
                                 FontSize="13"
                                 FontWeight="SemiBold"
@@ -871,19 +134,20 @@
                                 Text="{Binding SelectedNodeSubtitle}" />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
                             <Button
                                 Margin="0,0,8,0"
                                 Command="{Binding PreviousDiffCommand}"
                                 Content="↑ 上一处"
-                                IsEnabled="{Binding CanMoveToPreviousDiff}"
-                                Style="{DynamicResource SmallButton}" />
+                                IsEnabled="{Binding CanMoveToPreviousDiff}" />
                             <Button
                                 Margin="0,0,8,0"
                                 Command="{Binding NextDiffCommand}"
                                 Content="↓ 下一处"
-                                IsEnabled="{Binding CanMoveToNextDiff}"
-                                Style="{DynamicResource SmallButton}" />
+                                IsEnabled="{Binding CanMoveToNextDiff}" />
                             <Border
                                 Margin="0,0,8,0"
                                 Padding="8,2"
@@ -900,7 +164,6 @@
                             <Button
                                 Command="{Binding OverwriteSelectedFileCommand}"
                                 Content="⬇ 下载此文件"
-                                Style="{DynamicResource SmallButton}"
                                 Visibility="{Binding SelectedTreeNode.IsFile, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
 
@@ -921,8 +184,8 @@
                                     FontSize="9"
                                     FontWeight="SemiBold"
                                     Foreground="{DynamicResource TextDimBrush}"
-                                Text="{Binding DiffOverviewText}"
-                                TextAlignment="Center" />
+                                    Text="{Binding DiffOverviewText}"
+                                    TextAlignment="Center" />
                             </Grid>
                         </Border>
                     </Grid>
@@ -1006,7 +269,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock
                                     Margin="0,0,6,0"
                                     FontSize="10"
@@ -1018,7 +281,11 @@
                                     Text="{Binding PathHistoryAuthorFilter, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel
+                                Grid.Column="1"
+                                Margin="12,0,0,0"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
                                 <TextBlock
                                     Margin="0,0,6,0"
                                     FontSize="10"
@@ -1029,9 +296,9 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     ItemsSource="{Binding PathHistoryRecentDaysOptions}"
-                                    SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}"
                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                    ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                    ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                    SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}">
                                     <ListBox.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" />
@@ -1050,14 +317,15 @@
                                             <Setter Property="Template">
                                                 <Setter.Value>
                                                     <ControlTemplate TargetType="ListBoxItem">
-                                                        <Border x:Name="Root"
-                                                                MinWidth="46"
-                                                                Padding="10,4"
-                                                                Background="{DynamicResource Bg3Brush}"
-                                                                BorderBrush="{DynamicResource BorderBrush}"
-                                                                BorderThickness="1"
-                                                                CornerRadius="6"
-                                                                SnapsToDevicePixels="True">
+                                                        <Border
+                                                            x:Name="Root"
+                                                            MinWidth="46"
+                                                            Padding="10,4"
+                                                            Background="{DynamicResource Bg3Brush}"
+                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            SnapsToDevicePixels="True">
                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                         </Border>
                                                         <ControlTemplate.Triggers>
@@ -1130,12 +398,12 @@
 
                                     <ListView
                                         Grid.Row="1"
-                                        SelectedItem="{Binding SelectedPathHistoryItem, Mode=TwoWay}"
-                                        ItemsSource="{Binding PathHistoryItems}"
                                         Background="Transparent"
                                         BorderThickness="0"
+                                        ItemsSource="{Binding PathHistoryItems}"
                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                        SelectedItem="{Binding SelectedPathHistoryItem, Mode=TwoWay}"
                                         Visibility="{Binding HasPathHistoryItems, Converter={StaticResource BoolToVisibility}}">
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
@@ -1221,9 +489,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Grid
-                                        Background="{DynamicResource BgBrush}"
-                                        Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}">
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <TextBlock
                                                 Margin="0,0,0,6"
@@ -1243,8 +509,7 @@
                             <GridSplitter
                                 Grid.Column="1"
                                 HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                Style="{StaticResource GridSplitterStyle}" />
+                                VerticalAlignment="Stretch" />
 
                             <Border
                                 Grid.Column="2"
@@ -1315,12 +580,12 @@
                                                             <Border
                                                                 Width="18"
                                                                 Height="18"
+                                                                HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center"
                                                                 Background="{DynamicResource BgBrush}"
                                                                 BorderBrush="{DynamicResource BorderBrush}"
                                                                 BorderThickness="1"
-                                                                CornerRadius="4"
-                                                                HorizontalAlignment="Center"
-                                                                VerticalAlignment="Center">
+                                                                CornerRadius="4">
                                                                 <TextBlock
                                                                     HorizontalAlignment="Center"
                                                                     VerticalAlignment="Center"
@@ -1364,9 +629,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Grid
-                                        Background="{DynamicResource BgBrush}"
-                                        Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}">
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <TextBlock
                                                 Margin="0,0,0,6"
