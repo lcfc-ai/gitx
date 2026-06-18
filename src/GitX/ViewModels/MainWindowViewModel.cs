@@ -28,6 +28,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private DiffTreeModel _diffRoot = new();
     private int _diffLoadVersion;
     private int _fileLoadVersion;
+    private int _pathHistoryLoadVersion;
+    private int _commitDetailLoadVersion;
 
     [ObservableProperty]
     private ObservableCollection<DiffTreeModel> _diffTreeRoot = new();
@@ -82,6 +84,44 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isLoading = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPathHistoryItems))]
+    private ObservableCollection<CommitHistoryItem> _pathHistoryItems = new();
+
+    [ObservableProperty]
+    private bool _isPathHistoryLoading;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitTitle))]
+    private CommitHistoryItem? _selectedPathHistoryItem;
+
+    [ObservableProperty]
+    private CommitDetailResult? _selectedCommitDetail;
+
+    [ObservableProperty]
+    private bool _isCommitDetailLoading;
+
+    [ObservableProperty]
+    private string _pathHistoryTitle = "提交记录";
+
+    [ObservableProperty]
+    private string _pathHistorySubtitle = "选择文件或文件夹查看目标分支的提交记录";
+
+    [ObservableProperty]
+    private string _pathHistoryAuthorFilter = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PathHistoryRecentDaysLabel))]
+    private int _pathHistoryRecentDaysIndex;
+
+    public IReadOnlyList<string> PathHistoryRecentDaysOptions { get; } = new[] { "全部", "7 天", "30 天", "90 天" };
+
+    public bool HasPathHistoryItems => PathHistoryItems.Count > 0;
+    public string PathHistoryRecentDaysLabel => PathHistoryRecentDaysOptions[Math.Clamp(PathHistoryRecentDaysIndex, 0, PathHistoryRecentDaysOptions.Count - 1)];
+    public string SelectedCommitTitle => SelectedPathHistoryItem == null
+        ? "点击一条提交查看详情"
+        : $"{SelectedPathHistoryItem.ShortSha} · {SelectedPathHistoryItem.Author}";
 
     public string CurrentBranchDisplay => _currentBranch;
     public string TargetBranchDisplay => _targetBranch;
@@ -184,20 +224,39 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (value?.IsFile == true)
         {
             _ = LoadFileDiffAsync(value);
-            return;
         }
 
-        Interlocked.Increment(ref _fileLoadVersion);
-        ClearFileDiffDisplay();
-        CurrentDiffAnchorIndex = -1;
-        StatusBarText = value == null
-            ? "未选择文件"
-            : $"已选择目录: {value.FullPath}";
+        if (value?.IsFile != true)
+        {
+            Interlocked.Increment(ref _fileLoadVersion);
+            ClearFileDiffDisplay();
+            CurrentDiffAnchorIndex = -1;
+            StatusBarText = value == null
+                ? "未选择文件"
+                : $"已选择目录: {value.FullPath}";
+        }
+
+        _ = LoadPathHistoryAsync(value);
     }
 
     partial void OnTreeFilterTextChanged(string value)
     {
         ApplyTreeFilter(SelectedTreeNode?.FullPath);
+    }
+
+    partial void OnPathHistoryAuthorFilterChanged(string value)
+    {
+        _ = ReloadPathHistoryAsync();
+    }
+
+    partial void OnPathHistoryRecentDaysIndexChanged(int value)
+    {
+        _ = ReloadPathHistoryAsync();
+    }
+
+    partial void OnSelectedPathHistoryItemChanged(CommitHistoryItem? value)
+    {
+        _ = LoadSelectedCommitDetailAsync(value);
     }
 
     partial void OnUnifiedDiffRowsChanged(IReadOnlyList<UnifiedDiffRow> value)
@@ -365,6 +424,148 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         UnifiedDiffRows = Array.Empty<UnifiedDiffRow>();
     }
 
+    private void ClearPathHistoryDisplay()
+    {
+        PathHistoryTitle = "提交记录";
+        PathHistorySubtitle = "选择文件或文件夹查看目标分支的提交记录";
+        PathHistoryItems = new ObservableCollection<CommitHistoryItem>();
+        SelectedPathHistoryItem = null;
+        SelectedCommitDetail = null;
+        IsCommitDetailLoading = false;
+    }
+
+    private async Task ReloadPathHistoryAsync()
+    {
+        await LoadPathHistoryAsync(SelectedTreeNode, preserveSelection: true);
+    }
+
+    private int? GetRecentDaysFilter()
+    {
+        return PathHistoryRecentDaysIndex switch
+        {
+            1 => 7,
+            2 => 30,
+            3 => 90,
+            _ => null
+        };
+    }
+
+    private async Task LoadPathHistoryAsync(DiffTreeModel? node, bool preserveSelection = false)
+    {
+        var loadVersion = Interlocked.Increment(ref _pathHistoryLoadVersion);
+
+        if (node == null)
+        {
+            ClearPathHistoryDisplay();
+            IsPathHistoryLoading = false;
+            return;
+        }
+
+        var selectedPath = node.FullPath;
+        PathHistoryTitle = node.IsFile ? "文件提交记录" : "文件夹提交记录";
+        PathHistorySubtitle = node.IsFile
+            ? selectedPath
+            : $"{selectedPath} · 显示该目录下相关提交";
+        IsPathHistoryLoading = true;
+
+        try
+        {
+            var authorFilter = PathHistoryAuthorFilter.Trim();
+            var recentDays = GetRecentDaysFilter();
+            var items = await Task.Run(() => _gitService.GetPathHistory(_targetBranch, selectedPath, node.IsFile, 12, authorFilter, recentDays));
+
+            if (loadVersion != Volatile.Read(ref _pathHistoryLoadVersion))
+            {
+                return;
+            }
+
+            PathHistoryItems = new ObservableCollection<CommitHistoryItem>(items);
+            var preferredSha = preserveSelection ? SelectedPathHistoryItem?.Sha : null;
+            SelectedPathHistoryItem = items.FirstOrDefault(x => string.Equals(x.Sha, preferredSha, StringComparison.OrdinalIgnoreCase))
+                ?? items.FirstOrDefault();
+            if (items.Count == 0)
+            {
+                PathHistorySubtitle = node.IsFile
+                    ? $"{selectedPath} · 目标分支暂无提交记录"
+                    : $"{selectedPath} · 目标分支暂无相关提交记录";
+                SelectedCommitDetail = null;
+            }
+            else if (!string.IsNullOrWhiteSpace(authorFilter) || recentDays.HasValue)
+            {
+                var filterParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(authorFilter))
+                {
+                    filterParts.Add($"作者: {authorFilter}");
+                }
+                if (recentDays.HasValue)
+                {
+                    filterParts.Add($"最近 {recentDays.Value} 天");
+                }
+                PathHistorySubtitle = $"{selectedPath} · {string.Join(" · ", filterParts)}";
+            }
+        }
+        catch (Exception ex)
+        {
+            if (loadVersion != Volatile.Read(ref _pathHistoryLoadVersion))
+            {
+                return;
+            }
+
+            AppLog.Warn(ex, "加载路径提交记录失败: {Path}", selectedPath);
+            PathHistoryItems = new ObservableCollection<CommitHistoryItem>();
+            SelectedPathHistoryItem = null;
+            SelectedCommitDetail = null;
+            PathHistorySubtitle = $"{selectedPath} · 提交记录加载失败";
+        }
+        finally
+        {
+            if (loadVersion == Volatile.Read(ref _pathHistoryLoadVersion))
+            {
+                IsPathHistoryLoading = false;
+            }
+        }
+    }
+
+    private async Task LoadSelectedCommitDetailAsync(CommitHistoryItem? item)
+    {
+        var loadVersion = Interlocked.Increment(ref _commitDetailLoadVersion);
+        if (item == null)
+        {
+            SelectedCommitDetail = null;
+            IsCommitDetailLoading = false;
+            return;
+        }
+
+        IsCommitDetailLoading = true;
+        try
+        {
+            var detail = await Task.Run(() => _gitService.GetCommitDetail(item.Sha));
+            if (loadVersion != Volatile.Read(ref _commitDetailLoadVersion))
+            {
+                return;
+            }
+
+            SelectedCommitDetail = detail;
+        }
+        catch (Exception ex)
+        {
+            if (loadVersion != Volatile.Read(ref _commitDetailLoadVersion))
+            {
+                return;
+            }
+
+            AppLog.Warn(ex, "加载提交详情失败: {Sha}", item.Sha);
+            SelectedCommitDetail = null;
+        }
+        finally
+        {
+            if (loadVersion == Volatile.Read(ref _commitDetailLoadVersion))
+            {
+                IsCommitDetailLoading = false;
+            }
+        }
+    }
+
     private void ResetDiffAnchor()
     {
         var anchors = GetDiffAnchorLineNumbers();
@@ -458,6 +659,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
         StatusBarText = ok ? $"已覆盖: {filePath}" : $"覆盖失败: {err}";
         await LoadDiffAsync();
+        await LoadPathHistoryAsync(SelectedTreeNode);
     }
 
     [RelayCommand]
@@ -485,6 +687,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _cacheLog.ClearWorkingTreeBlobCache();
         StatusBarText = $"批量覆盖完成: {success} 成功, {fail} 失败";
         await LoadDiffAsync();
+        await LoadPathHistoryAsync(SelectedTreeNode);
     }
 
     [RelayCommand]
@@ -510,6 +713,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _cacheLog.ClearWorkingTreeBlobCache();
         StatusBarText = $"全部覆盖完成: {success} 成功, {fail} 失败";
         await LoadDiffAsync();
+        await LoadPathHistoryAsync(SelectedTreeNode);
     }
 
     [RelayCommand]
@@ -519,6 +723,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         StatusBarText = "正在同步远程分支...";
         await Task.Run(() => _gitService.FetchRemote());
         await LoadDiffAsync();
+        await LoadPathHistoryAsync(SelectedTreeNode);
     }
 
     public void Dispose()
