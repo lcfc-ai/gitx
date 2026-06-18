@@ -1,0 +1,9 @@
+Windows Registry Editor Version 5.00
+
+; GitX TortoiseGit 右键菜单卸载脚本
+; 双击运行即可移除 GitX 右键菜单
+
+[-HKEY_CURRENT_USER\Software\TortoiseGit\ContextMenuEntries\GitXCompareBranch]
+
+[HKEY_CURRENT_USER\Software\TortoiseGit\ContextMenuEntriesList]
+"GitXCompareBranch"=-

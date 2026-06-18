@@ -1,0 +1,12 @@
+Windows Registry Editor Version 5.00
+
+; GitX TortoiseGit 右键菜单注册脚本
+; 双击运行即可注册到 TortoiseGit 右键菜单
+; 修改 GitX.exe 路径为你的实际安装路径
+
+[HKEY_CURRENT_USER\Software\TortoiseGit\ContextMenuEntries\GitXCompareBranch]
+@="GitX - 和其他分支比较"
+"Command"="\"C:\\Tools\\GitX\\GitX.exe\" --repo=\"%wd\""
+
+[HKEY_CURRENT_USER\Software\TortoiseGit\ContextMenuEntriesList]
+"GitXCompareBranch"="GitX - 和其他分支比较"

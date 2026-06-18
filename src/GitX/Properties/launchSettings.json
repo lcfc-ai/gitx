@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GitX": {
+      "commandName": "Project",
+      "commandLineArgs": "--repo=D:\\1.Work\\lcfc2"
+    }
+  }
+}
