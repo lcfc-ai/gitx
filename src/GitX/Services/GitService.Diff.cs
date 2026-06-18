@@ -295,6 +295,11 @@ public partial class GitService
                 continue;
             }
 
+            if (IsIgnoredLocalPath(relativePath))
+            {
+                continue;
+            }
+
             if (WorkingFileMatchesTarget(targetBranchName, relativePath))
             {
                 continue;
@@ -318,6 +323,14 @@ public partial class GitService
             }
 
             yield return relativePath.Replace('\\', '/');
+        }
+    }
+
+    private bool IsIgnoredLocalPath(string relativePath)
+    {
+        lock (_repoLock)
+        {
+            return _repo.Ignore.IsPathIgnored(relativePath);
         }
     }
 

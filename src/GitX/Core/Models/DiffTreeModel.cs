@@ -70,18 +70,18 @@ public class DiffTreeModel
     {
         ChangeKind.Added => "新增",
         ChangeKind.Modified => "修改",
-        ChangeKind.Deleted => "删除",
+        ChangeKind.Deleted => "移除",
         ChangeKind.Renamed => "重命名",
         _ => "未知"
     };
 
     /// <summary>
-    /// 变更类型短码：a/d/m
+    /// 变更类型短码：+/-/x/m
     /// </summary>
     public string ChangeTypeCode => ChangeType switch
     {
-        ChangeKind.Added => "a",
-        ChangeKind.Deleted => "d",
+        ChangeKind.Added => "+",
+        ChangeKind.Deleted => "x",
         ChangeKind.Modified => "m",
         ChangeKind.Renamed => "r",
         ChangeKind.Copied => "c",
@@ -162,8 +162,8 @@ public class DiffTreeModel
             if (IsFile) return ChangeTypeCode;
 
             var parts = new List<string>();
-            if (AddedFileCount > 0) parts.Add($"a{AddedFileCount}");
-            if (DeletedFileCount > 0) parts.Add($"d{DeletedFileCount}");
+            if (AddedFileCount > 0) parts.Add($"+{AddedFileCount}");
+            if (DeletedFileCount > 0) parts.Add($"-{DeletedFileCount}");
             if (ModifiedFileCount > 0) parts.Add($"m{ModifiedFileCount}");
             if (RenamedFileCount > 0) parts.Add($"r{RenamedFileCount}");
             return parts.Count > 0 ? string.Join(" ", parts) : "0";
