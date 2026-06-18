@@ -29,6 +29,11 @@ public class DiffTreeModel
     public ChangeKind? ChangeType { get; set; }
 
     /// <summary>
+    /// 变更前路径，仅用于重命名/复制等场景。
+    /// </summary>
+    public string? OldPath { get; set; }
+
+    /// <summary>
     /// 子节点集合
     /// </summary>
     public ObservableCollection<DiffTreeModel> Children { get; set; } = new();
@@ -72,6 +77,8 @@ public class DiffTreeModel
         ChangeKind.Modified => "修改",
         ChangeKind.Deleted => "移除",
         ChangeKind.Renamed => "重命名",
+        ChangeKind.Copied => "复制",
+        ChangeKind.TypeChanged => "类型变更",
         _ => "未知"
     };
 

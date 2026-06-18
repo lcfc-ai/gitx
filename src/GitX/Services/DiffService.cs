@@ -40,7 +40,7 @@ public class DiffService
         {
             // 重命名/复制场景：change.Path 为目标侧新路径，OldPath 为旧路径。
             // 覆盖语义以「目标分支中文件所在路径」为准，故用 change.Path。
-            AddFileToTree(root, change.Path, change.Status);
+            AddFileToTree(root, change.Path, change.Status, change.OldPath);
         }
 
         PopulateChangeCounts(root);
@@ -52,7 +52,7 @@ public class DiffService
     /// <summary>
     /// 将文件按路径添加到树形结构
     /// </summary>
-    private void AddFileToTree(DiffTreeModel root, string filePath, ChangeKind changeType)
+    private void AddFileToTree(DiffTreeModel root, string filePath, ChangeKind changeType, string? oldPath)
     {
         var parts = filePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) return;
@@ -75,7 +75,8 @@ public class DiffService
                     Name = parts[i],
                     FullPath = currentPath,
                     IsFile = isFile,
-                    ChangeType = isFile ? changeType : null
+                    ChangeType = isFile ? changeType : null,
+                    OldPath = isFile ? oldPath : null
                 };
                 current.Children.Add(node);
                 current = node;

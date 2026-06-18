@@ -4,6 +4,7 @@ using GitX.Core.Logging;
 using GitX.Core.Models;
 using GitX.Services;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading;
 using System.Windows;
 
@@ -87,7 +88,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public string SelectedNodeTitle => SelectedTreeNode?.FullPath ?? "点击左侧文件查看差异";
     public string SelectedNodeSubtitle => SelectedTreeNode == null
         ? string.Empty
-        : SelectedTreeNode.IsFile
+        : SelectedTreeNode.IsFile && SelectedTreeNode.ChangeType == LibGit2Sharp.ChangeKind.Renamed && !string.IsNullOrWhiteSpace(SelectedTreeNode.OldPath)
+            ? $"重命名 · {SelectedTreeNode.OldPath} -> {SelectedTreeNode.FullPath}"
+            : SelectedTreeNode.IsFile
             ? $"{SelectedTreeNode.ChangeTypeDesc} · {SelectedTreeNode.ChangeTypeCode}"
             : $"本地目录统计 {SelectedTreeNode.FolderStatsSummary} · 共 {SelectedTreeNode.ChangeFileCount} 个文件";
     public string CurrentDiffPositionText
@@ -180,7 +183,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (value?.IsFile == true)
         {
-            _ = LoadFileDiffAsync(value.FullPath);
+            _ = LoadFileDiffAsync(value);
             return;
         }
 
@@ -253,9 +256,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task LoadFileDiffAsync(string filePath)
+    private async Task LoadFileDiffAsync(DiffTreeModel fileNode)
     {
         var loadVersion = Interlocked.Increment(ref _fileLoadVersion);
+        var filePath = fileNode.FullPath;
 
         try
         {
@@ -282,11 +286,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 }
 
                 // 本地工作区内容（与差异树口径一致：直接读磁盘）
-                var currentCacheKey = $"worktree:{filePath}";
+                var localPath = filePath;
+                var localFullPath = Path.Combine(_repoPath, filePath);
+                if (!File.Exists(localFullPath) &&
+                    fileNode.ChangeType == LibGit2Sharp.ChangeKind.Renamed &&
+                    !string.IsNullOrWhiteSpace(fileNode.OldPath))
+                {
+                    localPath = fileNode.OldPath;
+                }
+
+                var currentCacheKey = $"worktree:{localPath}";
                 var currentContent = _cacheLog.GetCachedBlob(currentCacheKey);
                 if (currentContent == null)
                 {
-                    var (content, isBinary) = _gitService.GetWorkingFileContent(filePath);
+                    var (content, isBinary) = _gitService.GetWorkingFileContent(localPath);
                     if (isBinary)
                     {
                         return (
@@ -315,7 +328,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             IsBinaryFile = snapshot.isBinary;
             UnifiedDiffText = snapshot.unifiedText;
             UnifiedDiffRows = snapshot.unifiedRows;
-            StatusBarText = snapshot.isBinary ? $"本地文件: {filePath}（二进制）" : $"本地文件: {filePath}";
+            if (fileNode.ChangeType == LibGit2Sharp.ChangeKind.Renamed &&
+                !string.IsNullOrWhiteSpace(fileNode.OldPath) &&
+                !string.Equals(fileNode.OldPath, filePath, StringComparison.OrdinalIgnoreCase))
+            {
+                StatusBarText = snapshot.isBinary
+                    ? $"本地文件: {fileNode.OldPath} -> {filePath}（二进制）"
+                    : $"本地文件: {fileNode.OldPath} -> {filePath}";
+            }
+            else
+            {
+                StatusBarText = snapshot.isBinary ? $"本地文件: {filePath}（二进制）" : $"本地文件: {filePath}";
+            }
         }
         catch (Exception ex)
         {
@@ -415,7 +439,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private async Task OverwriteSelectedFileAsync()
     {
         if (SelectedTreeNode?.IsFile != true) return;
-        var filePath = SelectedTreeNode.FullPath;
+        var fileNode = SelectedTreeNode;
+        var filePath = fileNode.FullPath;
 
         var result = MessageBox.Show(
             $"确认下载并覆盖本地文件？\n\n文件: {filePath}\n来源: {_targetBranch}\n\n此操作将覆盖您本地的文件，请确认。",
@@ -426,10 +451,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (result != MessageBoxResult.OK) return;
 
         StatusBarText = "正在覆盖...";
-        var (ok, err) = await Task.Run(() => _fileService.OverwriteFile(filePath, _targetBranch, _currentBranch));
+        var (ok, err) = await Task.Run(() => _fileService.OverwriteFile(filePath, _targetBranch, _currentBranch, fileNode));
         if (ok)
         {
-            _cacheLog.RemoveCachedBlob($"worktree:{filePath}");
+            _cacheLog.ClearWorkingTreeBlobCache();
         }
         StatusBarText = ok ? $"已覆盖: {filePath}" : $"覆盖失败: {err}";
         await LoadDiffAsync();

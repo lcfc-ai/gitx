@@ -53,6 +53,7 @@ public sealed class DiffTreeFilterService
     {
         return node.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
             || node.FullPath.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrWhiteSpace(node.OldPath) && node.OldPath.Contains(term, StringComparison.OrdinalIgnoreCase))
             || node.ChangeTypeCode.Contains(term, StringComparison.OrdinalIgnoreCase)
             || node.ChangeTypeDesc.Contains(term, StringComparison.OrdinalIgnoreCase)
             || node.FolderStatsSummary.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -66,6 +67,7 @@ public sealed class DiffTreeFilterService
             FullPath = source.FullPath,
             IsFile = source.IsFile,
             ChangeType = source.ChangeType,
+            OldPath = source.OldPath,
             IsExpanded = source.IsExpanded,
             ChangeFileCount = source.ChangeFileCount,
             AddedFileCount = source.AddedFileCount,

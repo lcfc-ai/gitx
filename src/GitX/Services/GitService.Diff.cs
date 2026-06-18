@@ -24,6 +24,7 @@ public partial class GitService
     ///    LibGit2Sharp 的 Diff.Compare 不完整应用 .gitattributes，会把 CRLF vs LF 误判为差异。
     /// 2. 未安装 git.exe 时回退 LibGit2Sharp（目标 commit 树对工作区）。
     /// 3. 额外把未跟踪文件补成 Added，避免本地新建文件被漏掉。
+    /// 4. 使用 `-z` NUL 分隔，避免特殊文件名和转义解析出错。
     /// </summary>
     public IReadOnlyList<FileChange> GetTreeChanges(string currentBranchName, string targetBranchName)
     {
@@ -97,7 +98,7 @@ public partial class GitService
                 // --name-status: 显示状态字母 + 路径
                 // 不加 --ignore-cr-at-eol 等：让 git 按 .gitattributes/autocrlf 原生判断，
                 // 与用户在命令行/IDE 看到的差异完全一致
-                Arguments = $"diff --name-status -M -C --diff-filter=ACMRTD {targetSha}",
+                Arguments = $"diff --name-status -z -M -C --diff-filter=ACMRTD {targetSha}",
                 WorkingDirectory = _repoPath,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -119,51 +120,14 @@ public partial class GitService
                 return null;
             }
 
-            var result = new List<FileChange>();
-            foreach (var rawLine in stdout.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var line = rawLine.TrimEnd('\r');
-                if (line.Length == 0) continue;
-
-                // 状态字段可能带相似度数字（R100/C100），取首字母即可
-                var firstTab = line.IndexOf('\t');
-                if (firstTab <= 0) continue;
-
-                var statusField = line.Substring(0, firstTab);
-                var rest = line.Substring(firstTab + 1);
-                var statusChar = statusField.Length > 0 ? statusField[0] : 'M';
-                var kind = ParseChangeKind(statusChar);
-
-                // Renamed/Copied 有两个 tab 分隔路径：old\new
-                string path;
-                string? oldPath = null;
-                var secondTab = rest.IndexOf('\t');
-                if (secondTab >= 0)
-                {
-                    oldPath = rest.Substring(0, secondTab);
-                    path = rest.Substring(secondTab + 1);
-                }
-                else
-                {
-                    path = rest;
-                }
-
-                // git 输出路径中的引号（core.quotepath=true 时非 ASCII 路径会被引号包裹）
-                path = UnquotePath(path);
-                oldPath = oldPath != null ? UnquotePath(oldPath) : null;
-
-                result.Add(new FileChange(path, oldPath, kind));
-            }
+            var result = ParseNameStatusOutput(stdout);
 
             // 补充未跟踪文件
-            var untracked = RunGitCommand(gitPath, "ls-files --others --exclude-standard");
+            var untracked = RunGitCommand(gitPath, "ls-files --others --exclude-standard -z");
             if (untracked != null)
             {
-                foreach (var rawLine in untracked.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                foreach (var path in SplitNullSeparated(untracked))
                 {
-                    var path = UnquotePath(rawLine.TrimEnd('\r'));
-                    if (path.Length == 0) continue;
-
                     if (WorkingFileMatchesTarget(targetBranchName, path))
                     {
                         continue;
@@ -238,12 +202,18 @@ public partial class GitService
     /// </summary>
     private List<FileChange> NormalizeWorkingTreeChanges(IEnumerable<FileChange> rawChanges, string targetBranchName)
     {
-        var normalized = new List<FileChange>();
-        foreach (var change in rawChanges)
-        {
-            var fullPath = Path.Combine(_repoPath, change.Path);
-            var localExists = File.Exists(fullPath);
-            var targetBlob = GetFileBlobInternal(targetBranchName, change.Path);
+            var normalized = new List<FileChange>();
+            foreach (var change in rawChanges)
+            {
+                if (change.Status is ChangeKind.Renamed or ChangeKind.Copied or ChangeKind.TypeChanged)
+                {
+                    normalized.Add(change);
+                    continue;
+                }
+
+                var fullPath = Path.Combine(_repoPath, change.Path);
+                var localExists = File.Exists(fullPath);
+                var targetBlob = GetFileBlobInternal(targetBranchName, change.Path);
 
             if (localExists && targetBlob != null)
             {
@@ -287,6 +257,13 @@ public partial class GitService
     private void AddFilesystemOnlyChanges(List<FileChange> result, string targetBranchName)
     {
         var knownPaths = new HashSet<string>(result.Select(x => x.Path), StringComparer.OrdinalIgnoreCase);
+        foreach (var change in result)
+        {
+            if (!string.IsNullOrWhiteSpace(change.OldPath))
+            {
+                knownPaths.Add(change.OldPath);
+            }
+        }
 
         foreach (var relativePath in EnumerateLocalFiles())
         {
@@ -343,40 +320,57 @@ public partial class GitService
             return true;
         }
 
-        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Any(part =>
-            string.Equals(part, "node_modules", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "bin", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "obj", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "dist", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "out", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "build", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, "coverage", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(part, ".vs", StringComparison.OrdinalIgnoreCase));
+        return false;
     }
 
     /// <summary>
-    /// 解除 git core.quotepath 的 C 风格转义引号（如 "单元测试.cs" → 单元测试.cs）
-    /// </summary>
-    private static string UnquotePath(string p)
+    private static List<FileChange> ParseNameStatusOutput(string output)
     {
-        if (p.Length < 2 || p[0] != '"' || p[p.Length - 1] != '"') return p;
-        var inner = p.Substring(1, p.Length - 2);
-        var sb = new System.Text.StringBuilder(inner.Length);
-        for (int i = 0; i < inner.Length; i++)
+        var tokens = SplitNullSeparated(output);
+        var result = new List<FileChange>();
+
+        for (var i = 0; i < tokens.Count; i++)
         {
-            if (inner[i] == '\\' && i + 3 < inner.Length)
+            var token = tokens[i];
+            if (string.IsNullOrEmpty(token))
             {
-                var hex = inner.Substring(i + 1, 3);
-                if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var code))
-                {
-                    sb.Append((char)code);
-                    i += 3;
-                    continue;
-                }
+                continue;
             }
-            sb.Append(inner[i]);
+
+            var statusChar = token[0];
+            var kind = ParseChangeKind(statusChar);
+
+            string path;
+            string? oldPath = null;
+
+            if (kind is ChangeKind.Renamed or ChangeKind.Copied)
+            {
+                if (i + 2 >= tokens.Count)
+                {
+                    break;
+                }
+
+                oldPath = tokens[++i];
+                path = tokens[++i];
+            }
+            else
+            {
+                if (i + 1 >= tokens.Count)
+                {
+                    break;
+                }
+
+                path = tokens[++i];
+            }
+
+            result.Add(new FileChange(path, oldPath, kind));
         }
-        return sb.ToString();
+
+        return result;
+    }
+
+    private static List<string> SplitNullSeparated(string text)
+    {
+        return text.Split('\0', StringSplitOptions.RemoveEmptyEntries).ToList();
     }
 }

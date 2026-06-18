@@ -26,7 +26,7 @@ public class FileService
     /// 文本文件用 UTF-8(无 BOM) 写入；二进制文件通过 Blob 流式复制字节，避免编码损坏。
     /// 目标分支中不存在该文件时（删除场景）删除本地文件。
     /// </summary>
-    public (bool success, string? error) OverwriteFile(string filePath, string targetBranch, string currentBranch)
+    public (bool success, string? error) OverwriteFile(string filePath, string targetBranch, string currentBranch, DiffTreeModel? fileNode = null)
     {
         try
         {
@@ -62,6 +62,19 @@ public class FileService
                 // 文本文件：即使内容为空，也要写成空文件，而不是误判为删除
                 var content = blob.GetContentText() ?? string.Empty;
                 File.WriteAllText(fullPath, content, new UTF8Encoding(false));
+            }
+
+            // 重命名场景：新路径已经写入后，再清理旧路径，避免本地残留双份文件
+            if (fileNode?.ChangeType == LibGit2Sharp.ChangeKind.Renamed &&
+                !string.IsNullOrWhiteSpace(fileNode.OldPath) &&
+                !string.Equals(fileNode.OldPath, filePath, StringComparison.OrdinalIgnoreCase))
+            {
+                var oldFullPath = Path.Combine(_repoPath, fileNode.OldPath);
+                if (File.Exists(oldFullPath))
+                {
+                    File.Delete(oldFullPath);
+                    RemoveEmptyParentDirectories(oldFullPath);
+                }
             }
 
             _cacheLog.LogFileOverwrite(_repoPath, currentBranch, targetBranch, filePath, true);
@@ -132,7 +145,7 @@ public class FileService
 
         foreach (var fileNode in EnumerateFileNodes(folderNode))
         {
-            var (ok, err) = OverwriteFile(fileNode.FullPath, targetBranch, currentBranch);
+            var (ok, err) = OverwriteFile(fileNode.FullPath, targetBranch, currentBranch, fileNode);
             if (ok)
                 success++;
             else
