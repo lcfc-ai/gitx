@@ -289,7 +289,6 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
             <Setter Property="Focusable" Value="False" />
-            <EventSetter Event="MouseLeftButtonUp" Handler="OnDiffTreeItemMouseLeftButtonUp" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TreeViewItem">
@@ -306,7 +305,8 @@
                                 Background="Transparent"
                                 BorderBrush="Transparent"
                                 BorderThickness="1"
-                                CornerRadius="4">
+                                CornerRadius="4"
+                                MouseLeftButtonDown="OnDiffTreeItemRowMouseLeftButtonDown">
                                 <Grid MinHeight="28">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="2" />

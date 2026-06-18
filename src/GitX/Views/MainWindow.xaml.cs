@@ -103,19 +103,36 @@ public partial class MainWindow : ThemedWindow
         }
     }
 
-    private void OnDiffTreeItemMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void OnDiffTreeItemRowMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not TreeViewItem item)
+        var item = sender as TreeViewItem
+            ?? (sender as FrameworkElement)?.TemplatedParent as TreeViewItem;
+
+        if (item == null)
         {
             return;
         }
 
-        if (item.DataContext is not GitX.Core.Models.DiffTreeModel node || node.IsFile || node.Children.Count == 0)
+        if (item.DataContext is not GitX.Core.Models.DiffTreeModel node)
         {
             return;
         }
 
-        node.IsExpanded = !node.IsExpanded;
+        // 文件节点：单击就明确选中，触发右侧差异加载。
+        if (node.IsFile || node.Children.Count == 0)
+        {
+            item.IsSelected = true;
+            if (_viewModel != null && !ReferenceEquals(_viewModel.SelectedTreeNode, node))
+            {
+                _viewModel.SelectedTreeNode = node;
+            }
+
+            return;
+        }
+
+        // 文件夹节点：单击直接展开/收起，不再依赖双击。
+        item.IsSelected = true;
+        item.IsExpanded = !item.IsExpanded;
         e.Handled = true;
     }
 
