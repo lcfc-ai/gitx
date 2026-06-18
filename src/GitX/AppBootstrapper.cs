@@ -22,6 +22,8 @@ internal sealed class AppBootstrapper
     public void Start(string[] args)
     {
         _app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        ThemeManager.Initialize(_app);
+        ThemeManager.ApplyTheme(ThemeManager.VisualStudioDarkKey);
 
         var repoPath = ParseRepoPath(args);
         if (string.IsNullOrEmpty(repoPath))

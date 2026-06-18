@@ -1,4 +1,5 @@
 using GitX.ViewModels;
+using GitX.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,12 +11,17 @@ public partial class MainWindow : ThemedWindow
 {
     private MainWindowViewModel? _viewModel;
     private bool _diffHighlighterSetup;
+    private bool _isThemeSelectionSyncing;
     private readonly UnifiedDiffHighlighter _diffHighlighter;
 
     public MainWindow()
     {
         InitializeComponent();
         _diffHighlighter = new UnifiedDiffHighlighter(() => _viewModel?.UnifiedDiffRows ?? Array.Empty<GitX.Core.Models.UnifiedDiffRow>());
+        ThemeSelector.ItemsSource = ThemeManager.Themes;
+        ThemeSelector.DisplayMemberPath = nameof(ThemeDefinition.DisplayName);
+        ThemeSelector.SelectedValuePath = nameof(ThemeDefinition.Key);
+        ThemeSelector.SelectedValue = ThemeManager.CurrentThemeKey;
         Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -25,6 +31,7 @@ public partial class MainWindow : ThemedWindow
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Dispatcher.BeginInvoke(SetupDiffHighlighter, DispatcherPriority.Loaded);
+        SyncThemeSelection();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -168,6 +175,38 @@ public partial class MainWindow : ThemedWindow
             TreeFilterBox.Clear();
             TreeFilterBox.Focus();
             e.Handled = true;
+        }
+    }
+
+    private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isThemeSelectionSyncing)
+        {
+            return;
+        }
+
+        if (ThemeSelector.SelectedValue is string themeKey)
+        {
+            ThemeManager.ApplyTheme(themeKey);
+            SyncThemeSelection();
+        }
+    }
+
+    private void SyncThemeSelection()
+    {
+        if (ThemeSelector == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _isThemeSelectionSyncing = true;
+            ThemeSelector.SelectedValue = ThemeManager.CurrentThemeKey;
+        }
+        finally
+        {
+            _isThemeSelectionSyncing = false;
         }
     }
 

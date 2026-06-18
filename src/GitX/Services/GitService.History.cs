@@ -48,6 +48,7 @@ public partial class GitService
     /// </summary>
     public CommitDetailResult? GetCommitDetail(string sha)
     {
+        sha = sha.Trim();
         if (string.IsNullOrWhiteSpace(sha))
         {
             return null;
@@ -243,6 +244,9 @@ public partial class GitService
                 continue;
             }
 
+            var sha = fields[0].Trim();
+            var author = fields[1].Trim();
+            var message = fields[3].Trim();
             if (!DateTimeOffset.TryParse(fields[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when))
             {
                 when = DateTimeOffset.MinValue;
@@ -250,10 +254,10 @@ public partial class GitService
 
             result.Add(new CommitHistoryItem
             {
-                Sha = fields[0],
-                Author = fields[1],
+                Sha = sha,
+                Author = author,
                 CommitTime = when,
-                Message = fields[3]
+                Message = message
             });
         }
 

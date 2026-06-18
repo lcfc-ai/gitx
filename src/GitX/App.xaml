@@ -15,37 +15,6 @@
             <helpers:NullToVisibilityConverter x:Key="NullToVisibility" />
             <helpers:FileFolderIconConverter x:Key="FileFolderIcon" />
 
-            <!--  全局颜色资源  -->
-            <SolidColorBrush x:Key="BgBrush" Color="#1C1A18" />
-            <SolidColorBrush x:Key="Bg2Brush" Color="#24211E" />
-            <SolidColorBrush x:Key="Bg3Brush" Color="#2D2925" />
-            <SolidColorBrush x:Key="BorderBrush" Color="#3B362F" />
-            <SolidColorBrush x:Key="TextBrush" Color="#D7D1C5" />
-            <SolidColorBrush x:Key="TextDimBrush" Color="#958C7D" />
-            <SolidColorBrush x:Key="AccentBrush" Color="#AFA07A" />
-            <SolidColorBrush x:Key="Accent2Brush" Color="#87917B" />
-            <SolidColorBrush x:Key="GreenBrush" Color="#8FA27A" />
-            <SolidColorBrush x:Key="RedBrush" Color="#C3776F" />
-            <SolidColorBrush x:Key="YellowBrush" Color="#B79C61" />
-            <SolidColorBrush x:Key="AddBgBrush" Color="#263026" />
-            <SolidColorBrush x:Key="DelBgBrush" Color="#322321" />
-            <SolidColorBrush x:Key="SelectionBrush" Color="#26221E" />
-            <SolidColorBrush x:Key="SelectionBorderBrush" Color="#6E634C" />
-            <SolidColorBrush x:Key="HoverBrush" Color="#2B2723" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#2B2622" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#24201D" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#D7D1C5" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#D7D1C5" />
-            <SolidColorBrush x:Key="SurfaceBrush" Color="#25221E" />
-            <SolidColorBrush x:Key="Surface2Brush" Color="#2D2924" />
-            <SolidColorBrush x:Key="ScrollbarTrackBrush" Color="#1E1A17" />
-            <SolidColorBrush x:Key="ScrollbarTrackBorderBrush" Color="#3A342D" />
-            <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#5E574C" />
-            <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#756D5F" />
-            <SolidColorBrush x:Key="ScrollbarThumbPressedBrush" Color="#AFA07A" />
-            <SolidColorBrush x:Key="MenuBorderBrush" Color="#3A342D" />
-            <SolidColorBrush x:Key="MenuHoverBrush" Color="#302B26" />
-
             <!--  全局字体  -->
             <FontFamily x:Key="GlobalFont">Segoe UI, Microsoft YaHei, sans-serif</FontFamily>
             <FontFamily x:Key="CodeFont">Consolas, Fira Code, Courier New, monospace</FontFamily>
@@ -56,13 +25,13 @@
             </Style>
 
             <Style TargetType="TextBox">
-                <Setter Property="Background" Value="{StaticResource Bg3Brush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                <Setter Property="Background" Value="{DynamicResource Bg3Brush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="10,8" />
-                <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
-                <Setter Property="SelectionBrush" Value="{StaticResource SelectionBrush}" />
+                <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
+                <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
                 <Setter Property="SelectionOpacity" Value="1" />
                 <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
                 <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
@@ -73,8 +42,8 @@
             </Style>
 
             <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
-                <Setter Property="Background" Value="{StaticResource ScrollbarThumbBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource ScrollbarTrackBorderBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ScrollbarThumbBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ScrollbarTrackBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="MinWidth" Value="12" />
@@ -92,12 +61,12 @@
                                 SnapsToDevicePixels="True" />
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource ScrollbarThumbHoverBrush}" />
-                                    <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource ScrollbarThumbHoverBrush}" />
+                                    <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsDragging" Value="True">
-                                    <Setter TargetName="ThumbChrome" Property="Background" Value="{StaticResource ScrollbarThumbPressedBrush}" />
-                                    <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="{StaticResource ScrollbarThumbPressedBrush}" />
+                                    <Setter TargetName="ThumbChrome" Property="Background" Value="{DynamicResource ScrollbarThumbPressedBrush}" />
+                                    <Setter TargetName="ThumbChrome" Property="BorderBrush" Value="{DynamicResource ScrollbarThumbPressedBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter TargetName="ThumbChrome" Property="Opacity" Value="0.4" />
@@ -109,9 +78,9 @@
             </Style>
 
             <Style TargetType="ContextMenu">
-                <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource MenuBorderBrush}" />
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MenuBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="2" />
                 <Setter Property="HasDropShadow" Value="True" />
@@ -119,7 +88,7 @@
 
             <Style TargetType="MenuItem">
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                 <Setter Property="Padding" Value="10,6" />
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="OverridesDefaultStyle" Value="True" />
@@ -142,8 +111,8 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsHighlighted" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuHoverBrush}" />
-                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource MenuBorderBrush}" />
+                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource MenuBorderBrush}" />
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter Property="Opacity" Value="0.45" />
@@ -160,7 +129,7 @@
                 <Setter Property="Width" Value="14" />
                 <Setter Property="Height" Value="14" />
                 <Setter Property="Background" Value="Transparent" />
-                <Setter Property="Foreground" Value="{StaticResource ScrollbarThumbBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ScrollbarThumbBrush}" />
                 <Setter Property="Opacity" Value="0.95" />
                 <Setter Property="SnapsToDevicePixels" Value="True" />
                 <Setter Property="Template">
@@ -173,8 +142,8 @@
                                 <Border
                                     x:Name="TrackChrome"
                                     Margin="1"
-                                    Background="{StaticResource ScrollbarTrackBrush}"
-                                    BorderBrush="{StaticResource ScrollbarTrackBorderBrush}"
+                                    Background="{DynamicResource ScrollbarTrackBrush}"
+                                    BorderBrush="{DynamicResource ScrollbarTrackBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="999"
                                     Opacity="0.45" />
@@ -229,19 +198,19 @@
             </Style>
 
             <Style TargetType="ListView">
-                <Setter Property="Background" Value="{StaticResource Bg2Brush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             </Style>
 
             <Style TargetType="TreeView">
-                <Setter Property="Background" Value="{StaticResource Bg2Brush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             </Style>
 
             <Style TargetType="TreeViewItem">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="BorderBrush" Value="Transparent" />
@@ -249,16 +218,16 @@
             </Style>
 
             <Style TargetType="ListViewItem">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
 
             <!--  全局按钮样式  -->
             <Style x:Key="BaseButton" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="8,5" />
                 <Setter Property="FontSize" Value="13" />
@@ -281,8 +250,8 @@
                 </Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource HoverBrush}" />
-                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
                         <Setter Property="Opacity" Value="0.4" />
@@ -311,7 +280,7 @@
                 <Setter Property="BorderBrush" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="FontSize" Value="13" />
-                <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
@@ -326,8 +295,8 @@
                 </Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource HoverBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -336,19 +305,19 @@
                 x:Key="ChromeCloseButton"
                 BasedOn="{StaticResource ChromeButton}"
                 TargetType="Button">
-                <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource RedBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource BgBrush}" />
+                        <Setter Property="Background" Value="{DynamicResource RedBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource BgBrush}" />
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
             <!--  全局窗口样式  -->
             <Style x:Key="DarkWindow" TargetType="Window">
-                <Setter Property="Background" Value="{StaticResource BgBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                 <Setter Property="FontFamily" Value="{StaticResource GlobalFont}" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="UseLayoutRounding" Value="True" />
