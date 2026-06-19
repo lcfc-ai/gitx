@@ -23,8 +23,10 @@ public class DiffService
     ///
     /// 差异来源由 GitService 决定：优先 git CLI（结果与命令行/IDE 一致，正确处理
     /// .gitattributes 的 text 规范化和 core.autocrlf），LibGit2Sharp 兜底。
+    ///
+    /// 同时返回 WorkingTreeSummary：避免上层再调一次 GetTreeChanges，节省一半 git diff 耗时。
     /// </summary>
-    public DiffTreeModel BuildDiffTree(string currentBranch, string targetBranch)
+    public (DiffTreeModel root, WorkingTreeSummary summary) BuildDiffTreeWithSummary(string currentBranch, string targetBranch)
     {
         AppLog.Info("开始计算差异: {Current} vs {Target}", currentBranch, targetBranch);
 
@@ -36,17 +38,32 @@ public class DiffService
             IsFile = false
         };
 
+        var added = 0;
+        var deleted = 0;
+        var modified = 0;
+        var renamed = 0;
+
         foreach (var change in changes)
         {
             // 重命名/复制场景：change.Path 为目标侧新路径，OldPath 为旧路径。
             // 覆盖语义以「目标分支中文件所在路径」为准，故用 change.Path。
             AddFileToTree(root, change.Path, change.Status, change.OldPath);
+
+            switch (change.Status)
+            {
+                case ChangeKind.Added: added++; break;
+                case ChangeKind.Deleted: deleted++; break;
+                case ChangeKind.Modified: modified++; break;
+                case ChangeKind.Renamed: renamed++; break;
+            }
         }
 
         PopulateChangeCounts(root);
 
+        var summary = new WorkingTreeSummary(added, deleted, modified, renamed);
+
         AppLog.Info("差异计算完成，共 {Count} 个变更文件", changes.Count);
-        return root;
+        return (root, summary);
     }
 
     /// <summary>

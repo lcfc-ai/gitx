@@ -14,7 +14,7 @@
     Height="820"
     MinWidth="800"
     MinHeight="500"
-    d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
+    d:DataContext="{d:DesignData Source=/DesignTime/MainWindowViewModelSampleData.xaml, IsDesignTimeCreatable=True}"
     Background="{DynamicResource BgBrush}"
     FontFamily="{DynamicResource GlobalFont}"
     FontSize="13"
@@ -45,7 +45,8 @@
             <TextBlock
                 VerticalAlignment="Center"
                 FontSize="11"
-                Foreground="{DynamicResource TextDimBrush}"
+                Foreground="{DynamicResource TextBrush}"
+                Opacity="0.85"
                 Text="{Binding StatusBarText}"
                 TextTrimming="CharacterEllipsis" />
         </Border>
@@ -54,9 +55,9 @@
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition
-                    Width="280"
+                    Width="240"
                     MinWidth="160"
-                    MaxWidth="500" />
+                    MaxWidth="360" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
@@ -82,7 +83,8 @@
                     Grid.Row="1"
                     Panel.ZIndex="10"
                     Background="{DynamicResource BgBrush}"
-                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
+                    d:Visibility="Collapsed">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ProgressBar
                             Width="160"
@@ -236,7 +238,8 @@
 
                     <Grid
                         Background="{DynamicResource BgBrush}"
-                        Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVisibility}}">
+                        Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVisibility}}"
+                        d:Visibility="Collapsed">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock
                                 HorizontalAlignment="Center"
@@ -303,26 +306,35 @@
                                 <TextBlock
                                     Margin="0,0,6,0"
                                     VerticalAlignment="Center"
-                                    FontSize="10"
+                                    FontSize="11"
                                     Foreground="{DynamicResource TextDimBrush}"
                                     Text="作者" />
                                 <TextBox
-                                    Width="180"
+                                    Width="160"
                                     Padding="8,3"
                                     VerticalAlignment="Center"
                                     FontSize="11"
                                     Text="{Binding PathHistoryAuthorFilter, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
-                            <ListBox
+                            <StackPanel
                                 Grid.Column="2"
-                                MinHeight="24"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                ItemsSource="{Binding PathHistoryRecentDaysOptions}"
-                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}">
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
+                                <TextBlock
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{DynamicResource TextDimBrush}"
+                                    Text="按时间" />
+                                <ListBox
+                                    MinHeight="24"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    ItemsSource="{Binding PathHistoryRecentDaysOptions}"
+                                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                    ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                    SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}">
                                 <ListBox.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Orientation="Horizontal" />
@@ -375,7 +387,8 @@
                                             Text="{Binding}" />
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
-                            </ListBox>
+                                </ListBox>
+                            </StackPanel>
                         </Grid>
 
                         <!--  第 3 行：左 commit 列表 + 分隔条 + 右 commit 详情  -->
@@ -406,7 +419,8 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock
-                                            FontSize="10"
+                                            VerticalAlignment="Center"
+                                            FontSize="11"
                                             FontWeight="SemiBold"
                                             Foreground="{DynamicResource TextDimBrush}"
                                             Text="提交历史" />
@@ -414,7 +428,7 @@
                                             Grid.Column="1"
                                             Margin="0,0,8,0"
                                             VerticalAlignment="Center"
-                                            FontSize="10"
+                                            FontSize="11"
                                             Foreground="{DynamicResource TextDimBrush}"
                                             Text="{Binding PathHistoryRecentDaysLabel}" />
                                         <Button
@@ -546,7 +560,8 @@
                                         BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
-                                        Visibility="{Binding HasPathHistoryItems, Converter={StaticResource InverseBoolToVisibility}}">
+                                        Visibility="{Binding HasPathHistoryItems, Converter={StaticResource InverseBoolToVisibility}}"
+                                        d:Visibility="Collapsed">
                                         <TextBlock
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
@@ -557,7 +572,8 @@
 
                                     <Grid
                                         Background="{DynamicResource BgBrush}"
-                                        Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}">
+                                        Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}"
+                                        d:Visibility="Collapsed">
                                         <TextBlock
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
@@ -780,7 +796,8 @@
                                         BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
-                                        Visibility="{Binding SelectedPathHistoryItem, Converter={StaticResource InverseNullToVisibility}, FallbackValue=Visible}">
+                                        Visibility="{Binding SelectedPathHistoryItem, Converter={StaticResource InverseNullToVisibility}, FallbackValue=Visible}"
+                                        d:Visibility="Collapsed">
                                         <TextBlock
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
@@ -793,7 +810,8 @@
                                         Grid.RowSpan="4"
                                         Panel.ZIndex="20"
                                         Background="{DynamicResource BgBrush}"
-                                        Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}">
+                                        Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}"
+                                        d:Visibility="Collapsed">
                                         <TextBlock
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"

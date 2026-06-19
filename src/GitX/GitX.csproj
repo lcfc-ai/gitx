@@ -28,4 +28,11 @@
     <PackageReference Include="System.IO.Abstractions" Version="20.0.15" />
   </ItemGroup>
 
+  <!-- DesignTime 目录下的 XAML 是给 Visual Studio 设计器用的样例数据，
+       运行时不需要打包，也不会被 Application 加载 -->
+  <ItemGroup>
+    <Page Remove="DesignTime\**\*.xaml" />
+    <None Include="DesignTime\**\*.xaml" />
+  </ItemGroup>
+
 </Project>

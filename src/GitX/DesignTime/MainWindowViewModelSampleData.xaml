@@ -1,0 +1,55 @@
+<vm:MainWindowViewModel
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:vm="clr-namespace:GitX.ViewModels"
+    xmlns:model="clr-namespace:GitX.Core.Models">
+    <vm:MainWindowViewModel.StatusBarText>就绪 · 23 个文件</vm:MainWindowViewModel.StatusBarText>
+    <vm:MainWindowViewModel.TotalChangeCount>23</vm:MainWindowViewModel.TotalChangeCount>
+    <vm:MainWindowViewModel.VisibleChangeCount>23</vm:MainWindowViewModel.VisibleChangeCount>
+    <vm:MainWindowViewModel.TreeFilterText></vm:MainWindowViewModel.TreeFilterText>
+    <vm:MainWindowViewModel.DiffTreeRoot>
+        <model:DiffTreeModel Name="src" FullPath="src" IsFile="False" ChangeFileCount="20" AddedFileCount="2" DeletedFileCount="1" IsExpanded="True">
+            <model:DiffTreeModel.Children>
+                <model:DiffTreeModel Name="Services" FullPath="src/Services" IsFile="False" ChangeFileCount="8" AddedFileCount="1" DeletedFileCount="0" IsExpanded="True">
+                    <model:DiffTreeModel.Children>
+                        <model:DiffTreeModel Name="TextDiffService.cs" FullPath="src/Services/TextDiffService.cs" IsFile="True" ChangeType="Modified" />
+                        <model:DiffTreeModel Name="GitService.cs" FullPath="src/Services/GitService.cs" IsFile="True" ChangeType="Modified" />
+                        <model:DiffTreeModel Name="NewHelper.cs" FullPath="src/Services/NewHelper.cs" IsFile="True" ChangeType="Added" />
+                    </model:DiffTreeModel.Children>
+                </model:DiffTreeModel>
+                <model:DiffTreeModel Name="ViewModels" FullPath="src/ViewModels" IsFile="False" ChangeFileCount="5" IsExpanded="True">
+                    <model:DiffTreeModel.Children>
+                        <model:DiffTreeModel Name="MainWindowViewModel.cs" FullPath="src/ViewModels/MainWindowViewModel.cs" IsFile="True" ChangeType="Modified" />
+                    </model:DiffTreeModel.Children>
+                </model:DiffTreeModel>
+            </model:DiffTreeModel.Children>
+        </model:DiffTreeModel>
+        <model:DiffTreeModel Name="docs" FullPath="docs" IsFile="False" ChangeFileCount="3">
+            <model:DiffTreeModel.Children>
+                <model:DiffTreeModel Name="README.md" FullPath="docs/README.md" IsFile="True" ChangeType="Modified" />
+            </model:DiffTreeModel.Children>
+        </model:DiffTreeModel>
+    </vm:MainWindowViewModel.DiffTreeRoot>
+    <vm:MainWindowViewModel.UnifiedDiffText>@@ -1,5 +1,7 @@
+ unchanged context
+-old line removed
++new line added
+ more context</vm:MainWindowViewModel.UnifiedDiffText>
+    <vm:MainWindowViewModel.SelectedNodeTitle>src/Services/TextDiffService.cs</vm:MainWindowViewModel.SelectedNodeTitle>
+    <vm:MainWindowViewModel.SelectedNodeSubtitle>Modified · M</vm:MainWindowViewModel.SelectedNodeSubtitle>
+    <vm:MainWindowViewModel.DiffOverviewText>+12 -3  ·  src/Services/TextDiffService.cs</vm:MainWindowViewModel.DiffOverviewText>
+    <vm:MainWindowViewModel.CurrentDiffPositionText>2 / 5</vm:MainWindowViewModel.CurrentDiffPositionText>
+    <vm:MainWindowViewModel.PathHistoryTitle>src/Services/TextDiffService.cs · 提交记录</vm:MainWindowViewModel.PathHistoryTitle>
+    <vm:MainWindowViewModel.PathHistorySubtitle>显示 origin/main 上该路径的全部提交</vm:MainWindowViewModel.PathHistorySubtitle>
+    <vm:MainWindowViewModel.PathHistoryItems>
+        <model:CommitHistoryItem Sha="a1b2c3d4" Author="张三" AuthorEmail="zhangsan@example.com" CommitTime="2026-06-19T14:23:00+08:00" Message="优化 LCS 算法内存占用" />
+        <model:CommitHistoryItem Sha="e4f5g6h7" Author="李四" AuthorEmail="lisi@example.com" CommitTime="2026-06-18T09:15:00+08:00" Message="修复 diff 高亮丢失" />
+        <model:CommitHistoryItem Sha="i9j0k1l2" Author="王五" AuthorEmail="wangwu@example.com" CommitTime="2026-06-16T16:42:00+08:00" Message="重构缓存层" />
+    </vm:MainWindowViewModel.PathHistoryItems>
+    <vm:MainWindowViewModel.SelectedCommitTitle>a1b2c3d · 张三</vm:MainWindowViewModel.SelectedCommitTitle>
+    <vm:MainWindowViewModel.SelectedCommitAuthorEmail>zhangsan@example.com</vm:MainWindowViewModel.SelectedCommitAuthorEmail>
+    <vm:MainWindowViewModel.SelectedCommitRelativeTime>2 小时前</vm:MainWindowViewModel.SelectedCommitRelativeTime>
+    <vm:MainWindowViewModel.SelectedCommitParentShas>e4f5g6h7</vm:MainWindowViewModel.SelectedCommitParentShas>
+    <vm:MainWindowViewModel.SelectedCommitFullSha>a1b2c3d4</vm:MainWindowViewModel.SelectedCommitFullSha>
+</vm:MainWindowViewModel>

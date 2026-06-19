@@ -10,8 +10,19 @@ public sealed class DiffTreeFilterService
 {
     public ObservableCollection<DiffTreeModel> Filter(IEnumerable<DiffTreeModel> roots, string? filterText)
     {
+        var (list, _) = FilterWithCount(roots, filterText);
+        return list;
+    }
+
+    /// <summary>
+    /// 与 Filter 相同，但额外返回根级 visible count（已累加）。
+    /// 省去调用方再 LINQ Sum 一遍整棵树。
+    /// </summary>
+    public (ObservableCollection<DiffTreeModel> roots, int visibleCount) FilterWithCount(IEnumerable<DiffTreeModel> roots, string? filterText)
+    {
         var list = new ObservableCollection<DiffTreeModel>();
         var term = Normalize(filterText);
+        int total = 0;
 
         foreach (var root in roots)
         {
@@ -19,10 +30,11 @@ public sealed class DiffTreeFilterService
             if (filtered != null)
             {
                 list.Add(filtered);
+                total += filtered.ChangeFileCount;
             }
         }
 
-        return list;
+        return (list, total);
     }
 
     private static DiffTreeModel? FilterNode(DiffTreeModel node, string term)
@@ -45,8 +57,33 @@ public sealed class DiffTreeFilterService
 
         var clone = CloneShallow(node);
         clone.Children = new ObservableCollection<DiffTreeModel>(clonedChildren);
-        RecalculateCounts(clone);
+        // 累加子节点已有 counts：避免对整棵树重新枚举
+        AccumulateCounts(clone, clonedChildren);
         return clone;
+    }
+
+    private static void AccumulateCounts(DiffTreeModel clone, List<DiffTreeModel> children)
+    {
+        if (clone.IsFile)
+        {
+            // 文件节点：CloneShallow 已复制源节点 counts
+            return;
+        }
+
+        int count = 0, added = 0, deleted = 0, modified = 0, renamed = 0;
+        foreach (var child in children)
+        {
+            count += child.ChangeFileCount;
+            added += child.AddedFileCount;
+            deleted += child.DeletedFileCount;
+            modified += child.ModifiedFileCount;
+            renamed += child.RenamedFileCount;
+        }
+        clone.ChangeFileCount = count;
+        clone.AddedFileCount = added;
+        clone.DeletedFileCount = deleted;
+        clone.ModifiedFileCount = modified;
+        clone.RenamedFileCount = renamed;
     }
 
     private static bool Matches(DiffTreeModel node, string term)

@@ -28,54 +28,67 @@ public partial class GitService
     /// </summary>
     public IReadOnlyList<FileChange> GetTreeChanges(string currentBranchName, string targetBranchName)
     {
+        Commit? targetCommit;
         lock (_repoLock)
         {
-            var targetCommit = GetBranchCommitInternal(targetBranchName);
-            if (targetCommit == null)
-                throw new InvalidOperationException($"无法获取分支 {targetBranchName} 对应的 Commit");
+            targetCommit = GetBranchCommitInternal(targetBranchName);
+        }
+        if (targetCommit == null)
+            throw new InvalidOperationException($"无法获取分支 {targetBranchName} 对应的 Commit");
 
-            // 优先 git CLI：结果权威，与命令行一致
-            var gitPath = FindGitExecutable();
-            if (gitPath != null)
+        // 优先 git CLI：结果权威，与命令行一致
+        var gitPath = FindGitExecutable();
+        if (gitPath != null)
+        {
+            var viaCli = GetWorkingTreeChangesViaGitCli(gitPath, targetBranchName, targetCommit.Sha);
+            if (viaCli != null)
             {
-                var viaCli = GetWorkingTreeChangesViaGitCli(gitPath, targetBranchName, targetCommit.Sha);
-                if (viaCli != null)
-                {
-                    AppLog.Info("差异计算（git CLI）: 本地工作区 vs {Tgt} = {Count} 个变更",
-                        targetCommit.Sha.Substring(0, 7), viaCli.Count);
-                    return viaCli;
-                }
-                AppLog.Warn("git CLI diff 失败，回退 LibGit2Sharp");
+                AppLog.Info("差异计算（git CLI）: 本地工作区 vs {Tgt} = {Count} 个变更",
+                    targetCommit.Sha.Substring(0, 7), viaCli.Count);
+                return viaCli;
             }
+            AppLog.Warn("git CLI diff 失败，回退 LibGit2Sharp");
+        }
 
-            // 回退 LibGit2Sharp：目标 commit 树对比工作区
+        // 回退 LibGit2Sharp：目标 commit 树对比工作区
+        List<FileChange> list;
+        List<string> untrackedPaths;
+        lock (_repoLock)
+        {
             var treeChanges = _repo.Diff.Compare<TreeChanges>(targetCommit.Tree, DiffTargets.WorkingDirectory);
-            var list = new List<FileChange>();
+            list = new List<FileChange>();
             foreach (var c in treeChanges.Where(c => c.Status != ChangeKind.Unmodified))
             {
                 list.Add(new FileChange(c.Path, c.OldPath, c.Status));
             }
-            list = NormalizeWorkingTreeChanges(list, targetBranchName);
 
-            // 补上未跟踪文件，避免本地新建文件漏显示
             var status = _repo.RetrieveStatus();
+            untrackedPaths = new List<string>();
             foreach (var entry in status.Untracked)
             {
-                if (WorkingFileMatchesTarget(targetBranchName, entry.FilePath))
-                {
-                    continue;
-                }
+                untrackedPaths.Add(entry.FilePath);
+            }
+        }
 
-                if (!list.Any(x => string.Equals(x.Path, entry.FilePath, StringComparison.OrdinalIgnoreCase)))
-                {
-                    list.Add(CreateUntrackedChange(targetBranchName, entry.FilePath));
-                }
+        list = NormalizeWorkingTreeChanges(list, targetBranchName);
+
+        // 补上未跟踪文件，避免本地新建文件漏显示
+        foreach (var path in untrackedPaths)
+        {
+            if (WorkingFileMatchesTarget(targetBranchName, path))
+            {
+                continue;
             }
 
-            AppLog.Info("差异计算（LibGit2Sharp 兜底）: 本地工作区 vs {Target} = {Count} 个变更",
-                targetCommit.Sha.Substring(0, 7), list.Count);
-            return list;
+            if (!list.Any(x => string.Equals(x.Path, path, StringComparison.OrdinalIgnoreCase)))
+            {
+                list.Add(CreateUntrackedChange(targetBranchName, path));
+            }
         }
+
+        AppLog.Info("差异计算（LibGit2Sharp 兜底）: 本地工作区 vs {Target} = {Count} 个变更",
+            targetCommit.Sha.Substring(0, 7), list.Count);
+        return list;
     }
 
     /// <summary>
@@ -265,27 +278,88 @@ public partial class GitService
             }
         }
 
-        foreach (var relativePath in EnumerateLocalFiles())
+        // 优先用 `git ls-files` 拿到仓库内文件列表（避免 Directory.EnumerateFiles 扫到 .git/ 或 node_modules/ 等大目录）
+        // gitPath 为空（无 git.exe）时回退到本地磁盘扫描
+        var gitPath = FindGitExecutable();
+        var enumerated = gitPath != null
+            ? TryEnumerateTrackedAndUntrackedViaGit(gitPath)
+            : null;
+
+        if (enumerated == null)
         {
-            if (knownPaths.Contains(relativePath))
+            // 无 git.exe：退化成本地扫描，跳过 .git/ 即可
+            foreach (var relativePath in EnumerateLocalFiles())
             {
-                continue;
-            }
+                if (knownPaths.Contains(relativePath)) continue;
+                if (IsIgnoredLocalPath(relativePath)) continue;
+                if (WorkingFileMatchesTarget(targetBranchName, relativePath)) continue;
 
-            if (IsIgnoredLocalPath(relativePath))
-            {
-                continue;
+                var targetBlob = GetFileBlobInternal(targetBranchName, relativePath);
+                var kind = targetBlob == null ? ChangeKind.Deleted : ChangeKind.Modified;
+                result.Add(new FileChange(relativePath, null, kind));
+                knownPaths.Add(relativePath);
             }
+            return;
+        }
 
-            if (WorkingFileMatchesTarget(targetBranchName, relativePath))
-            {
-                continue;
-            }
+        foreach (var relativePath in enumerated)
+        {
+            if (knownPaths.Contains(relativePath)) continue;
+
+            // 仍走 .gitignore 检查，因为 ls-files --others --exclude-standard 理论已过滤，
+            // 但 ls-files（tracked）不过滤忽略规则，需要再过一遍
+            if (IsIgnoredLocalPath(relativePath)) continue;
+
+            if (WorkingFileMatchesTarget(targetBranchName, relativePath)) continue;
 
             var targetBlob = GetFileBlobInternal(targetBranchName, relativePath);
             var kind = targetBlob == null ? ChangeKind.Deleted : ChangeKind.Modified;
             result.Add(new FileChange(relativePath, null, kind));
             knownPaths.Add(relativePath);
+        }
+    }
+
+    /// <summary>
+    /// 一次 git 调用同时拿到 tracked + untracked 文件列表。
+    /// git 输出的 NUL 结尾，tracked 用 `ls-files -z`，untracked 用 `ls-files --others --exclude-standard -z`。
+    /// 大仓库下比 Directory.EnumerateFiles 快一个数量级。
+    /// </summary>
+    private List<string>? TryEnumerateTrackedAndUntrackedViaGit(string gitPath)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = gitPath,
+                Arguments = "ls-files -z --others --exclude-standard",
+                WorkingDirectory = _repoPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return null;
+
+            var stdout = proc.StandardOutput.ReadToEnd();
+            proc.StandardError.ReadToEnd();
+            proc.WaitForExit(15000);
+            if (!proc.HasExited) { try { proc.Kill(); } catch { } return null; }
+            if (proc.ExitCode != 0) return null;
+
+            var result = new List<string>();
+            foreach (var path in stdout.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var normalized = path.Replace('\\', '/');
+                if (ShouldSkipLocalPath(normalized)) continue;
+                result.Add(normalized);
+            }
+            return result;
+        }
+        catch
+        {
+            return null;
         }
     }
 

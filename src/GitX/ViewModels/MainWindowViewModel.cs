@@ -294,8 +294,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _ = LoadPathHistoryAsync(value);
     }
 
+    private int _filterDebounceVersion;
+
     partial void OnTreeFilterTextChanged(string value)
     {
+        // 250ms 防抖：避免连续按键时每字都重建整棵 ObservableCollection
+        var myVersion = Interlocked.Increment(ref _filterDebounceVersion);
+        _ = DebouncedFilterAsync(myVersion);
+    }
+
+    private async Task DebouncedFilterAsync(int myVersion)
+    {
+        await Task.Delay(250);
+        if (myVersion != Volatile.Read(ref _filterDebounceVersion)) return;
         ApplyTreeFilter(SelectedTreeNode?.FullPath);
     }
 
@@ -336,11 +347,13 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             // 差异计算与文件路径遍历都在后台线程完成，避免大仓库卡 UI 线程
             // BuildDiffTree 对比「本地工作区」vs「目标分支 commit」，只显示真正不一致的文件
             // 当前分支改用 origin/xxx 作为「远端最新」基线，fetch 后会自动对齐
+            // 一次调用同时返回 summary：避免上层再 GetTreeChanges 一次，省一半 git diff 耗时
             await Task.Run(() =>
             {
-                _diffRoot = _diffService.BuildDiffTree(effectiveCurrent, effectiveTarget);
-                count = _diffRoot.ChangeFileCount;
-                summary = _gitService.GetWorkingTreeSummary(effectiveCurrent, effectiveTarget);
+                var (root, sum) = _diffService.BuildDiffTreeWithSummary(effectiveCurrent, effectiveTarget);
+                _diffRoot = root;
+                count = root.ChangeFileCount;
+                summary = sum;
             });
 
             if (loadVersion != Volatile.Read(ref _diffLoadVersion))
@@ -376,9 +389,33 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private async Task LoadFileDiffAsync(DiffTreeModel fileNode)
     {
-        var loadVersion = Interlocked.Increment(ref _fileLoadVersion);
         var filePath = fileNode.FullPath;
         var effectiveTarget = _effectiveTargetBranch;
+
+        // 缓存命中：UI 线程同步赋值，跳过 Task.Run 和版本号竞争
+        var targetCacheKey = $"{effectiveTarget}:{filePath}";
+        var currentCacheKey = $"worktree:{filePath}";
+        var cachedTarget = _cacheLog.GetCachedBlob(targetCacheKey);
+        var cachedCurrent = _cacheLog.GetCachedBlob(currentCacheKey);
+        if (cachedTarget != null && cachedCurrent != null)
+        {
+            IsBinaryFile = false;
+            var (unifiedText, unifiedRows) = await Task.Run(() =>
+            {
+                var diff = _textDiffService.BuildUnifiedDiff(cachedCurrent, cachedTarget);
+                return (diff.Text, diff.Rows);
+            });
+            if (UnifiedDiffText == unifiedText && ReferenceEquals(UnifiedDiffRows, unifiedRows))
+            {
+                return;
+            }
+            UnifiedDiffText = unifiedText;
+            UnifiedDiffRows = unifiedRows;
+            StatusBarText = $"本地文件: {filePath}";
+            return;
+        }
+
+        var loadVersion = Interlocked.Increment(ref _fileLoadVersion);
 
         try
         {
@@ -387,7 +424,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             var snapshot = await Task.Run(() =>
             {
                 // 目标分支内容（带缓存），缓存 key 用远端跟踪分支以匹配新的对比基线
-                var targetCacheKey = $"{effectiveTarget}:{filePath}";
                 var targetContent = _cacheLog.GetCachedBlob(targetCacheKey);
                 if (targetContent == null)
                 {
@@ -414,8 +450,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     localPath = fileNode.OldPath;
                 }
 
-                var currentCacheKey = $"worktree:{localPath}";
-                var currentContent = _cacheLog.GetCachedBlob(currentCacheKey);
+                var currentKey = $"worktree:{localPath}";
+                var currentContent = _cacheLog.GetCachedBlob(currentKey);
                 if (currentContent == null)
                 {
                     var (content, isBinary) = _gitService.GetWorkingFileContent(localPath);
@@ -428,7 +464,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     }
 
                     currentContent = content;
-                    _cacheLog.CacheBlob(currentCacheKey, currentContent);
+                    _cacheLog.CacheBlob(currentKey, currentContent);
                 }
 
                 var diff = _textDiffService.BuildUnifiedDiff(currentContent ?? string.Empty, targetContent ?? string.Empty);
@@ -665,9 +701,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     private void ApplyTreeFilter(string? preservePath = null)
     {
-        var filtered = _diffTreeFilterService.Filter(_diffRoot.Children, TreeFilterText);
+        var (filtered, visibleCount) = _diffTreeFilterService.FilterWithCount(_diffRoot.Children, TreeFilterText);
         DiffTreeRoot = filtered;
-        VisibleChangeCount = filtered.Sum(node => node.ChangeFileCount);
+        VisibleChangeCount = visibleCount;
 
         if (string.IsNullOrWhiteSpace(preservePath))
         {
