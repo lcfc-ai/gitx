@@ -87,6 +87,24 @@ public static class ThemeManager
         };
 
         var merged = _application.Resources.MergedDictionaries;
+
+        // 移除「设计器兜底」主题（避免同名 key 后注册者反而成为静态 fallback）。
+        // 用 Source 路径识别，避免硬编码 index 与未来顺序变化耦合。
+        ResourceDictionary? fallback = null;
+        foreach (var dict in merged)
+        {
+            if (dict.Source != null &&
+                dict.Source.ToString().Contains("/Styles/DesignTimeFallback.xaml", StringComparison.OrdinalIgnoreCase))
+            {
+                fallback = dict;
+                break;
+            }
+        }
+        if (fallback != null)
+        {
+            merged.Remove(fallback);
+        }
+
         if (_activeThemeDictionary != null)
         {
             merged.Remove(_activeThemeDictionary);

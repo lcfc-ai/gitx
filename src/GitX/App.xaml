@@ -17,6 +17,7 @@
                 <ResourceDictionary Source="Styles/Common/Inputs.xaml" />
                 <ResourceDictionary Source="Styles/Common/Selectors.xaml" />
                 <ResourceDictionary Source="Styles/Common/Buttons.xaml" />
+                <ResourceDictionary Source="Styles/DesignTimeFallback.xaml" />
                 <ResourceDictionary Source="Styles/MainWindow.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

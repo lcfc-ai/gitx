@@ -1,0 +1,34 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--  设计器兜底主题：当 Visual Studio 设计器预览 XAML 时，
+         ThemeManager 不会执行（无 Application 启动），所以 DynamicResource 找不到 brush 会直接消失。
+         运行时 ThemeManager.ApplyTheme 会把这里所有同名 key 覆盖掉（同名 key 后者优先生效），
+         所以这个文件只对设计器可见，对运行时用户无任何副作用。
+         色板取自 IntelliJDark，覆盖设计器白底看不清楚的问题。  -->
+    <SolidColorBrush x:Key="BgBrush" Color="#2B2D30" />
+    <SolidColorBrush x:Key="Bg2Brush" Color="#313335" />
+    <SolidColorBrush x:Key="Bg3Brush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#4A4D51" />
+    <SolidColorBrush x:Key="TextBrush" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#A9B0B8" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#589DF6" />
+    <SolidColorBrush x:Key="Accent2Brush" Color="#82B1FF" />
+    <SolidColorBrush x:Key="GreenBrush" Color="#6A8759" />
+    <SolidColorBrush x:Key="RedBrush" Color="#CC7832" />
+    <SolidColorBrush x:Key="YellowBrush" Color="#FFC66D" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#CC7832" />
+    <SolidColorBrush x:Key="AddBgBrush" Color="#3C4D3C" />
+    <SolidColorBrush x:Key="DelBgBrush" Color="#4D3C3C" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#214283" />
+    <SolidColorBrush x:Key="SelectionBorderBrush" Color="#589DF6" />
+    <SolidColorBrush x:Key="HoverBrush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#313335" />
+    <SolidColorBrush x:Key="Surface2Brush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="MenuHoverBrush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="MenuBorderBrush" Color="#4A4D51" />
+    <SolidColorBrush x:Key="DangerBgBrush" Color="#4D3C3C" />
+    <SolidColorBrush x:Key="TreeRowHoverBrush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="TreeRowSelectedBrush" Color="#214283" />
+    <SolidColorBrush x:Key="TreeRowInactiveSelectedBrush" Color="#3C3F41" />
+    <SolidColorBrush x:Key="TreeRowExpandedBrush" Color="#3C3F41" />
+</ResourceDictionary>
