@@ -23,7 +23,23 @@ internal sealed class AppBootstrapper
     {
         _app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         ThemeManager.Initialize(_app);
-        ThemeManager.ApplyTheme(ThemeManager.VisualStudioDarkKey);
+
+        var savedTheme = ThemeManager.LoadThemePreference();
+        if (!string.IsNullOrWhiteSpace(savedTheme))
+        {
+            try
+            {
+                ThemeManager.ApplyTheme(savedTheme);
+            }
+            catch
+            {
+                ThemeManager.ApplyTheme(ThemeManager.VisualStudioDarkKey);
+            }
+        }
+        else
+        {
+            ThemeManager.ApplyTheme(ThemeManager.VisualStudioDarkKey);
+        }
 
         var repoPath = ParseRepoPath(args);
         if (string.IsNullOrEmpty(repoPath))

@@ -22,6 +22,14 @@ public partial class GitService
     /// </summary>
     public void FetchRemote(TimeSpan? timeout = null)
     {
+        FetchRemoteWithProgress(null, timeout);
+    }
+
+    /// <summary>
+    /// 带进度回调的 fetch。progress 形参为阶段描述文本（在 UI 线程外调用，回调里切回 UI 线程更新）。
+    /// </summary>
+    public void FetchRemoteWithProgress(Action<string>? progress, TimeSpan? timeout = null)
+    {
         timeout ??= TimeSpan.FromSeconds(60);
         try
         {
@@ -29,17 +37,21 @@ public partial class GitService
             if (gitPath == null)
             {
                 // 没装 git.exe，回退到 LibGit2Sharp（仅对公开仓库或已缓存凭据的仓库有效）
+                progress?.Invoke("未找到 git.exe，回退 LibGit2Sharp Fetch...");
                 AppLog.Warn("未找到 git.exe，回退 LibGit2Sharp Fetch（可能因无凭据失败）");
                 FetchViaLibGit2(timeout.Value);
+                progress?.Invoke("Fetch 完成（LibGit2Sharp 兜底）");
                 return;
             }
+
+            progress?.Invoke("正在连接远程仓库...");
 
             bool completed = Task.Run(() =>
             {
                 var psi = new ProcessStartInfo
                 {
                     FileName = gitPath,
-                    Arguments = "fetch --all --prune",
+                    Arguments = "fetch --all --prune --progress",
                     WorkingDirectory = _repoPath,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -52,26 +64,73 @@ public partial class GitService
                 using var proc = Process.Start(psi);
                 if (proc == null) return;
 
-                var stderr = proc.StandardError.ReadToEnd();
+                // git 把进度写到 stderr，按行把关键阶段转给 UI
+                var lastLine = string.Empty;
+                while (!proc.StandardError.EndOfStream)
+                {
+                    var line = proc.StandardError.ReadLine();
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    lastLine = line.Trim();
+                    if (lastLine.Length > 80) lastLine = lastLine[..80] + "...";
+                    progress?.Invoke(lastLine);
+                }
                 proc.StandardOutput.ReadToEnd();
                 proc.WaitForExit();
 
                 if (proc.ExitCode != 0)
                 {
-                    AppLog.Warn("git fetch 退出码 {Code}: {Err}", proc.ExitCode, stderr.Trim());
+                    AppLog.Warn("git fetch 退出码 {Code}", proc.ExitCode);
+                    progress?.Invoke("Fetch 失败，查看日志");
+                }
+                else
+                {
+                    progress?.Invoke("Fetch 完成");
                 }
             }).Wait(timeout.Value);
 
             if (!completed)
             {
                 AppLog.Warn("Fetch 超时（{Sec}s），使用本地缓存", timeout.Value.TotalSeconds);
-                return;
+                progress?.Invoke($"Fetch 超时（{timeout.Value.TotalSeconds:F0}s），已使用本地缓存");
             }
-            AppLog.Info("远程分支同步完成（git fetch --all --prune）");
+            else
+            {
+                AppLog.Info("远程分支同步完成（git fetch --all --prune）");
+            }
         }
         catch (Exception ex)
         {
             AppLog.Warn(ex, "Fetch 远程分支失败，使用本地缓存");
+            progress?.Invoke($"Fetch 失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 获取分支对应的远端跟踪分支（如 origin/xxx），找不到返回 null。
+    /// 传入形参已包含 origin/ 前缀时直接返回；否则优先用 branch.XXX.merge 配置，再 fallback 找 origin/&lt;同名&gt;。
+    /// </summary>
+    public string? GetRemoteTrackingBranch(string branchName)
+    {
+        if (string.IsNullOrWhiteSpace(branchName)) return null;
+
+        lock (_repoLock)
+        {
+            var branch = _repo.Branches[branchName];
+            if (branch == null) return null;
+
+            // LibGit2Sharp 在 modern git 里能给出 remote tracking branch
+            if (branch.IsTracking)
+            {
+                return branch.TrackedBranch?.FriendlyName;
+            }
+
+            // 老仓库：手动找 origin/&lt;同名&gt;
+            var candidate = $"origin/{branchName}";
+            if (_repo.Branches[candidate] != null)
+            {
+                return candidate;
+            }
+            return null;
         }
     }
 

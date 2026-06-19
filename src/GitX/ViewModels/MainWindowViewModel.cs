@@ -20,6 +20,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly DiffTreeFilterService _diffTreeFilterService;
     private readonly FileService _fileService;
     private readonly CacheLogService _cacheLog;
+    // 提交详情 LRU 缓存：同 SHA 重复点击立即返回，避免反复 fork git 子进程
+    private const int MaxCommitDetailCacheEntries = 200;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CommitDetailResult> _commitDetailCache = new();
     private readonly TextDiffService _textDiffService;
 
     private readonly string _repoPath;
@@ -30,6 +33,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private int _fileLoadVersion;
     private int _pathHistoryLoadVersion;
     private int _commitDetailLoadVersion;
+    private IReadOnlyList<int> _cachedDiffAnchors = Array.Empty<int>();
 
     [ObservableProperty]
     private ObservableCollection<DiffTreeModel> _diffTreeRoot = new();
@@ -94,9 +98,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedCommitTitle))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitAuthorEmail))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitRelativeTime))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitParentShas))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitFullSha))]
     private CommitHistoryItem? _selectedPathHistoryItem;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitTitle))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitAuthorEmail))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitRelativeTime))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitParentShas))]
+    [NotifyPropertyChangedFor(nameof(SelectedCommitFullSha))]
     private CommitDetailResult? _selectedCommitDetail;
 
     [ObservableProperty]
@@ -108,6 +121,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _pathHistorySubtitle = "选择文件或文件夹查看目标分支的提交记录";
 
+    // 最近一次「跳转到提交中文件」的结果：true=已定位，false=未在差异列表中找到
+    // 给视图层做短暂高亮反馈用
+    public bool LastNavigationFound { get; private set; } = true;
+
     [ObservableProperty]
     private string _pathHistoryAuthorFilter = string.Empty;
 
@@ -115,16 +132,54 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(PathHistoryRecentDaysLabel))]
     private int _pathHistoryRecentDaysIndex;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PathHistoryCollapseIcon))]
+    [NotifyPropertyChangedFor(nameof(CanExpandPathHistory))]
+    private bool _isPathHistoryCollapsed;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentBranchDisplay))]
+    [NotifyPropertyChangedFor(nameof(TargetBranchDisplay))]
+    private bool _isFetchingRemote;
+
+    [ObservableProperty]
+    private string _fetchProgressText = string.Empty;
+
+    // 当前对比基线：fetch 远端后会升级为 origin/xxx；切回本地分支时再退回去
+    private string _effectiveCurrentBranch => _gitService.GetRemoteTrackingBranch(_currentBranch) ?? _currentBranch;
+    private string _effectiveTargetBranch => _gitService.GetRemoteTrackingBranch(_targetBranch) ?? _targetBranch;
+
     public IReadOnlyList<string> PathHistoryRecentDaysOptions { get; } = new[] { "全部", "7 天", "30 天", "90 天" };
 
     public bool HasPathHistoryItems => PathHistoryItems.Count > 0;
     public string PathHistoryRecentDaysLabel => PathHistoryRecentDaysOptions[Math.Clamp(PathHistoryRecentDaysIndex, 0, PathHistoryRecentDaysOptions.Count - 1)];
+    public string PathHistoryCollapseIcon => IsPathHistoryCollapsed ? "▴" : "▾";
+    public bool CanExpandPathHistory => IsPathHistoryCollapsed;
     public string SelectedCommitTitle => SelectedPathHistoryItem == null
         ? "点击一条提交查看详情"
         : $"{SelectedPathHistoryItem.ShortSha} · {SelectedPathHistoryItem.Author}";
 
-    public string CurrentBranchDisplay => _currentBranch;
-    public string TargetBranchDisplay => _targetBranch;
+    public string SelectedCommitAuthorEmail => SelectedPathHistoryItem?.AuthorEmail ?? string.Empty;
+    public string SelectedCommitRelativeTime => SelectedPathHistoryItem?.CommitTimeRelative ?? string.Empty;
+    public string SelectedCommitParentShas => SelectedPathHistoryItem?.ParentShasText ?? string.Empty;
+    public string SelectedCommitFullSha => SelectedPathHistoryItem?.Sha ?? string.Empty;
+
+    public string CurrentBranchDisplay
+    {
+        get
+        {
+            var remote = _gitService.GetRemoteTrackingBranch(_currentBranch);
+            return remote == null ? _currentBranch : $"{_currentBranch} → {remote}";
+        }
+    }
+    public string TargetBranchDisplay
+    {
+        get
+        {
+            var remote = _gitService.GetRemoteTrackingBranch(_targetBranch);
+            return remote == null ? _targetBranch : $"{_targetBranch} → {remote}";
+        }
+    }
     public string SelectedNodeTitle => SelectedTreeNode?.FullPath ?? "点击左侧文件查看差异";
     public string SelectedNodeSubtitle => SelectedTreeNode == null
         ? string.Empty
@@ -261,6 +316,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     partial void OnUnifiedDiffRowsChanged(IReadOnlyList<UnifiedDiffRow> value)
     {
+        RecomputeDiffAnchors();
         ResetDiffAnchor();
     }
 
@@ -275,13 +331,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             int count = 0;
             WorkingTreeSummary? summary = null;
+            var effectiveCurrent = _effectiveCurrentBranch;
+            var effectiveTarget = _effectiveTargetBranch;
             // 差异计算与文件路径遍历都在后台线程完成，避免大仓库卡 UI 线程
             // BuildDiffTree 对比「本地工作区」vs「目标分支 commit」，只显示真正不一致的文件
+            // 当前分支改用 origin/xxx 作为「远端最新」基线，fetch 后会自动对齐
             await Task.Run(() =>
             {
-                _diffRoot = _diffService.BuildDiffTree(_currentBranch, _targetBranch);
+                _diffRoot = _diffService.BuildDiffTree(effectiveCurrent, effectiveTarget);
                 count = _diffRoot.ChangeFileCount;
-                summary = _gitService.GetWorkingTreeSummary(_currentBranch, _targetBranch);
+                summary = _gitService.GetWorkingTreeSummary(effectiveCurrent, effectiveTarget);
             });
 
             if (loadVersion != Volatile.Read(ref _diffLoadVersion))
@@ -319,6 +378,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         var loadVersion = Interlocked.Increment(ref _fileLoadVersion);
         var filePath = fileNode.FullPath;
+        var effectiveTarget = _effectiveTargetBranch;
 
         try
         {
@@ -326,12 +386,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
             var snapshot = await Task.Run(() =>
             {
-                // 目标分支内容（带缓存）
-                var targetCacheKey = $"{_targetBranch}:{filePath}";
+                // 目标分支内容（带缓存），缓存 key 用远端跟踪分支以匹配新的对比基线
+                var targetCacheKey = $"{effectiveTarget}:{filePath}";
                 var targetContent = _cacheLog.GetCachedBlob(targetCacheKey);
                 if (targetContent == null)
                 {
-                    var (content, isBinary) = _gitService.GetFileContent(_targetBranch, filePath);
+                    var (content, isBinary) = _gitService.GetFileContent(effectiveTarget, filePath);
                     if (isBinary)
                     {
                         return (
@@ -472,7 +532,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             var authorFilter = PathHistoryAuthorFilter.Trim();
             var recentDays = GetRecentDaysFilter();
-            var items = await Task.Run(() => _gitService.GetPathHistory(_targetBranch, selectedPath, node.IsFile, 12, authorFilter, recentDays));
+            var effectiveTarget = _effectiveTargetBranch;
+            var items = await Task.Run(() => _gitService.GetPathHistory(effectiveTarget, selectedPath, node.IsFile, 50, authorFilter, recentDays));
 
             if (loadVersion != Volatile.Read(ref _pathHistoryLoadVersion))
             {
@@ -536,6 +597,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // 命中缓存：直接复用，不显示 loading，不重新加载
+        if (_commitDetailCache.TryGetValue(item.Sha, out var cached))
+        {
+            SelectedCommitDetail = cached;
+            IsCommitDetailLoading = false;
+            return;
+        }
+
         IsCommitDetailLoading = true;
         try
         {
@@ -545,6 +614,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            if (detail != null)
+            {
+                // 超过容量上限时直接清空，避免长时间浏览吃光内存
+                if (_commitDetailCache.Count >= MaxCommitDetailCacheEntries)
+                {
+                    _commitDetailCache.Clear();
+                }
+                _commitDetailCache.TryAdd(item.Sha, detail);
+            }
             SelectedCommitDetail = detail;
         }
         catch (Exception ex)
@@ -622,18 +700,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         return null;
     }
 
-    private IReadOnlyList<int> GetDiffAnchorLineNumbers()
+    private void RecomputeDiffAnchors()
     {
         if (UnifiedDiffRows.Count == 0)
         {
-            return Array.Empty<int>();
+            _cachedDiffAnchors = Array.Empty<int>();
+            return;
         }
 
-        return UnifiedDiffRows
+        _cachedDiffAnchors = UnifiedDiffRows
             .Select((row, index) => (row, index))
             .Where(x => x.row.Kind != UnifiedDiffRowKind.Context)
             .Select(x => x.index + 1)
             .ToArray();
+    }
+
+    private IReadOnlyList<int> GetDiffAnchorLineNumbers()
+    {
+        return _cachedDiffAnchors;
     }
 
     [RelayCommand]
@@ -642,17 +726,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (SelectedTreeNode?.IsFile != true) return;
         var fileNode = SelectedTreeNode;
         var filePath = fileNode.FullPath;
+        var fileName = fileNode.Name;
+        var effectiveTarget = _effectiveTargetBranch;
 
-        var result = MessageBox.Show(
-            $"确认下载并覆盖本地文件？\n\n文件: {filePath}\n来源: {_targetBranch}\n\n此操作将覆盖您本地的文件，请确认。",
-            "GitX 确认",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-
-        if (result != MessageBoxResult.OK) return;
+        var confirm = new Views.ConfirmDangerDialog(
+            "覆盖此文件",
+            $"将下载并覆盖本地文件：\n{filePath}\n来源: {effectiveTarget}\n\n此操作不可撤销，请输入文件名「{fileName}」以确认：")
+        {
+            Owner = System.Windows.Application.Current?.MainWindow,
+            ExpectedInput = fileName
+        };
+        if (confirm.ShowDialog() != true || !confirm.Confirmed)
+        {
+            StatusBarText = "已取消覆盖";
+            return;
+        }
 
         StatusBarText = "正在覆盖...";
-        var (ok, err) = await Task.Run(() => _fileService.OverwriteFile(filePath, _targetBranch, _currentBranch, fileNode));
+        var (ok, err) = await Task.Run(() => _fileService.OverwriteFile(filePath, effectiveTarget, _currentBranch, fileNode));
         if (ok)
         {
             _cacheLog.ClearWorkingTreeBlobCache();
@@ -667,17 +758,24 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (SelectedTreeNode?.IsFile == true || SelectedTreeNode == null) return;
 
+        var folderName = SelectedTreeNode.Name;
         var allFiles = _fileService.GetAllFilePaths(SelectedTreeNode);
-        var result = MessageBox.Show(
-            $"确认下载目录 \"{SelectedTreeNode.Name}\" 下所有差异文件？\n\n共 {allFiles.Count} 个文件，来源: {_targetBranch}\n\n此操作将覆盖本地对应文件，请确认。",
-            "GitX 确认",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-
-        if (result != MessageBoxResult.OK) return;
+        var effectiveTarget = _effectiveTargetBranch;
+        var confirm = new Views.ConfirmDangerDialog(
+            "覆盖整个文件夹",
+            $"将下载并覆盖文件夹「{folderName}」下 {allFiles.Count} 个文件。\n来源分支: {effectiveTarget}\n此操作不可撤销。\n\n请输入文件夹名「{folderName}」以确认继续：")
+        {
+            Owner = System.Windows.Application.Current?.MainWindow,
+            ExpectedInput = folderName
+        };
+        if (confirm.ShowDialog() != true || !confirm.Confirmed)
+        {
+            StatusBarText = "已取消批量覆盖";
+            return;
+        }
 
         StatusBarText = "正在批量覆盖...";
-        var (success, fail, errors) = await Task.Run(() => _fileService.OverwriteFolder(SelectedTreeNode, _targetBranch, _currentBranch));
+        var (success, fail, errors) = await Task.Run(() => _fileService.OverwriteFolder(SelectedTreeNode, effectiveTarget, _currentBranch));
 
         if (errors.Count > 0)
         {
@@ -693,8 +791,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task OverwriteAllFilesAsync()
     {
+        var effectiveTarget = _effectiveTargetBranch;
         var result = MessageBox.Show(
-        $"确认下载全部 {TotalChangeCount} 个本地差异文件？\n\n来源: {_targetBranch}\n目标: {_currentBranch} 本地工作区\n\n此操作将覆盖所有本地差异文件。",
+        $"确认下载全部 {TotalChangeCount} 个本地差异文件？\n\n来源: {effectiveTarget}\n目标: {_currentBranch} 本地工作区\n\n此操作将覆盖所有本地差异文件。",
             "GitX 确认",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning);
@@ -703,7 +802,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         StatusBarText = "正在全部覆盖...";
         // 复用 OverwriteFolder 的统一实现，避免重复代码并收集错误详情；遍历在后台线程完成
-        var (success, fail, errors) = await Task.Run(() => _fileService.OverwriteFolder(_diffRoot, _targetBranch, _currentBranch));
+        var (success, fail, errors) = await Task.Run(() => _fileService.OverwriteFolder(_diffRoot, effectiveTarget, _currentBranch));
 
         if (errors.Count > 0)
         {
@@ -717,13 +816,198 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void CopyPath()
+    {
+        if (SelectedTreeNode == null) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(SelectedTreeNode.FullPath);
+            StatusBarText = $"已复制路径: {SelectedTreeNode.FullPath}";
+        }
+        catch (Exception ex)
+        {
+            StatusBarText = $"复制失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenInExplorer()
+    {
+        if (SelectedTreeNode == null) return;
+        try
+        {
+            var path = SelectedTreeNode.FullPath;
+            if (SelectedTreeNode.IsFile)
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            }
+            else
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"\"{path}\"");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusBarText = $"打开失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ExpandAll()
+    {
+        if (SelectedTreeNode == null || SelectedTreeNode.IsFile) return;
+        var target = SelectedTreeNode.IsExpanded;
+        foreach (var node in EnumerateAllDescendants(SelectedTreeNode))
+        {
+            if (!node.IsFile) node.IsExpanded = !target;
+        }
+        SelectedTreeNode.IsExpanded = !target;
+    }
+
+    private static IEnumerable<DiffTreeModel> EnumerateAllDescendants(DiffTreeModel root)
+    {
+        foreach (var child in root.Children)
+        {
+            yield return child;
+            foreach (var d in EnumerateAllDescendants(child)) yield return d;
+        }
+    }
+
+    [RelayCommand]
+    private void NavigateToCommitFile(CommitFileChangeItem? file)
+    {
+        if (file == null || string.IsNullOrWhiteSpace(file.Path)) return;
+        // 找到对应树节点并选中（当前根 + 所有展开的子节点）
+        var node = DiffTreeRoot == null
+            ? null
+            : _diffTreeFilterService.FindNodeByPath(DiffTreeRoot, file.Path);
+        if (node != null)
+        {
+            SelectedTreeNode = node;
+            LastNavigationFound = true;
+            StatusBarText = $"已跳转到: {file.Path}";
+        }
+        else
+        {
+            LastNavigationFound = false;
+            StatusBarText = $"未在差异列表中找到: {file.Path}";
+        }
+    }
+
+    [RelayCommand]
+    private void CopyShaToClipboard(string? sha)
+    {
+        if (string.IsNullOrWhiteSpace(sha)) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(sha);
+            StatusBarText = $"已复制 SHA: {sha[..Math.Min(8, sha.Length)]}";
+        }
+        catch
+        {
+            StatusBarText = "复制失败，剪贴板被占用";
+        }
+    }
+
+    [RelayCommand]
+    private void TogglePathHistoryCollapse()
+    {
+        IsPathHistoryCollapsed = !IsPathHistoryCollapsed;
+    }
+
+    [RelayCommand]
+    private void CopyFilePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(path);
+            StatusBarText = $"已复制路径: {path}";
+        }
+        catch (Exception ex)
+        {
+            StatusBarText = $"复制失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenFileInExplorer(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            var fullPath = Path.IsPathRooted(path) ? path : Path.Combine(_repoPath, path);
+            if (File.Exists(fullPath))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
+            }
+            else
+            {
+                // 文件可能存在于目标分支但本地工作区没有，打开所在目录
+                var dir = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", $"\"{dir}\"");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusBarText = $"打开失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task RefreshDiffAsync()
     {
-        // 刷新先重新 Fetch 远程，否则只能看到本地已有的提交，看不到远端新提交
-        StatusBarText = "正在同步远程分支...";
-        await Task.Run(() => _gitService.FetchRemote());
+        // 刷新只重算本地差异，不再自动 fetch。远端拉取由用户主动点「拉取最新」按钮触发。
         await LoadDiffAsync();
         await LoadPathHistoryAsync(SelectedTreeNode);
+    }
+
+    [RelayCommand]
+    private async Task FetchLatestAsync()
+    {
+        // 独立「拉取最新」按钮：仅同步远端 refs 并刷新对比基线，不动 working tree、不动本地分支指针
+        if (IsFetchingRemote) return;
+        IsFetchingRemote = true;
+        try
+        {
+            await RunFetchAsync(silent: false);
+            // fetch 之后 origin/xxx 可能变了：清掉依赖远端的缓存，重新加载
+            _commitDetailCache.Clear();
+            _cacheLog.ClearBlobCache();
+            await LoadDiffAsync();
+            await LoadPathHistoryAsync(SelectedTreeNode);
+            StatusBarText = $"拉取完成，对比基线: {_effectiveCurrentBranch} vs {_effectiveTargetBranch}";
+        }
+        finally
+        {
+            IsFetchingRemote = false;
+            FetchProgressText = string.Empty;
+        }
+    }
+
+    private async Task RunFetchAsync(bool silent)
+    {
+        // 进度回调在子线程，必须切回 UI 线程更新 FetchProgressText
+        var scheduler = SynchronizationContext.Current ?? new SynchronizationContext();
+        void Report(string line) => scheduler.Post(_ => FetchProgressText = line, null);
+
+        if (!silent)
+        {
+            StatusBarText = "正在同步远程分支...";
+            FetchProgressText = "准备 Fetch...";
+        }
+
+        await Task.Run(() => _gitService.FetchRemoteWithProgress(Report));
+
+        if (!silent)
+        {
+            FetchProgressText = string.IsNullOrEmpty(FetchProgressText) || FetchProgressText == "准备 Fetch..."
+                ? "Fetch 完成"
+                : FetchProgressText;
+        }
     }
 
     public void Dispose()

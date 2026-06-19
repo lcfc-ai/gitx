@@ -12,7 +12,7 @@
         </Grid.RowDefinitions>
 
         <Border
-            Padding="10,6"
+            Padding="10,4"
             Background="{DynamicResource BgBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,0,0,1"
@@ -49,15 +49,26 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox
+                        x:Name="ThemeSelector"
+                        Width="148"
+                        Height="24"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        FontSize="11"
+                        SelectionChanged="OnThemeSelectionChanged" />
                     <Button
                         Margin="0,0,6,0"
                         Click="OnMinimizeClick"
-                        Content="─" />
+                        Content="─"
+                        Style="{DynamicResource ChromeButton}" />
                     <Button
                         Margin="0,0,6,0"
                         Click="OnToggleMaximizeClick"
-                        Content="▢" />
+                        Content="▢"
+                        Style="{DynamicResource ChromeButton}" />
                     <Button
                         Click="OnCloseClick"
                         Content="×"
@@ -93,7 +104,9 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             TextAlignment="Center"
-                            Text="{Binding CurrentBranchDisplay}" />
+                            Text="{Binding CurrentBranchDisplay}"
+                            TextTrimming="CharacterEllipsis"
+                            MaxWidth="200" />
                     </Border>
 
                     <Border
@@ -110,7 +123,9 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             TextAlignment="Center"
-                            Text="{Binding TargetBranchDisplay}" />
+                            Text="{Binding TargetBranchDisplay}"
+                            TextTrimming="CharacterEllipsis"
+                            MaxWidth="200" />
                     </Border>
                 </StackPanel>
 
@@ -118,31 +133,31 @@
                     Grid.Column="1"
                     HorizontalAlignment="Right"
                     Orientation="Horizontal">
-                    <Border
+                    <TextBlock
                         Margin="0,0,8,0"
-                        Padding="8,2"
-                        Background="{DynamicResource Bg3Brush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                        <TextBlock
-                            FontSize="11"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource TextDimBrush}"
-                            Text="主题" />
-                    </Border>
-                    <ComboBox
-                        x:Name="ThemeSelector"
-                        Width="156"
-                        Margin="0,0,12,0"
-                        SelectionChanged="OnThemeSelectionChanged" />
+                        VerticalAlignment="Center"
+                        FontSize="10"
+                        Foreground="{DynamicResource Accent2Brush}"
+                        MaxWidth="260"
+                        Text="{Binding FetchProgressText}"
+                        TextTrimming="CharacterEllipsis"
+                        Visibility="{Binding IsFetchingRemote, Converter={StaticResource BoolToVisibility}}" />
+                    <Button
+                        Margin="0,0,6,0"
+                        Command="{Binding FetchLatestCommand}"
+                        Content="拉取最新"
+                        IsEnabled="{Binding IsFetchingRemote, Converter={StaticResource InverseBool}}"
+                        ToolTip="git fetch --all --prune，并把对比基线升级为 origin/&lt;branch&gt;（不动本地工作区与分支指针）" />
                     <Button
                         Margin="0,0,8,0"
                         Command="{Binding RefreshDiffCommand}"
-                        Content="🔄 刷新" />
+                        Content="刷新"
+                        IsEnabled="{Binding IsFetchingRemote, Converter={StaticResource InverseBool}}"
+                        ToolTip="拉取远端 + 重新计算差异树" />
                     <Button
                         Command="{Binding OverwriteAllFilesCommand}"
-                        Content="⬇ 全部下载" />
+                        Content="全部下载"
+                        IsEnabled="{Binding IsFetchingRemote, Converter={StaticResource InverseBool}}" />
                 </StackPanel>
             </Grid>
         </Border>

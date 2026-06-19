@@ -25,6 +25,9 @@
     <SolidColorBrush x:Key="ScrollbarThumbPressedBrush" Color="#007ACC" />
     <SolidColorBrush x:Key="MenuBorderBrush" Color="#3A3A3A" />
     <SolidColorBrush x:Key="MenuHoverBrush" Color="#2A2D2E" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#F44747" />
+    <SolidColorBrush x:Key="DangerBgBrush" Color="#3A2020" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#89D185" />
     <SolidColorBrush x:Key="TreeRowExpandedBrush" Color="#2A2A2E" />
     <SolidColorBrush x:Key="TreeRowHoverBrush" Color="#2B2B30" />
     <SolidColorBrush x:Key="TreeRowSelectedBrush" Color="#323239" />

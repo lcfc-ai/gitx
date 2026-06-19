@@ -116,4 +116,32 @@ public sealed class DiffTreeFilterService
     {
         return (text ?? string.Empty).Trim();
     }
+
+    /// <summary>
+    /// 在树中按完整路径查找节点（用于「点 commit 影响文件跳到对应文件」）。
+    /// </summary>
+    public DiffTreeModel? FindNodeByPath(IEnumerable<DiffTreeModel> roots, string fullPath)
+    {
+        if (string.IsNullOrWhiteSpace(fullPath)) return null;
+        foreach (var root in roots)
+        {
+            var hit = FindNodeByPathRecursive(root, fullPath);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    private static DiffTreeModel? FindNodeByPathRecursive(DiffTreeModel node, string fullPath)
+    {
+        if (string.Equals(node.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return node;
+        }
+        foreach (var child in node.Children)
+        {
+            var hit = FindNodeByPathRecursive(child, fullPath);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
 }

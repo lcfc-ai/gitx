@@ -11,7 +11,7 @@
     xmlns:vm="clr-namespace:GitX.ViewModels"
     Title="GitX - 分支对比"
     Width="1200"
-    Height="800"
+    Height="820"
     MinWidth="800"
     MinHeight="500"
     d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
@@ -37,23 +37,17 @@
 
         <!--  底部状态栏  -->
         <Border
-            Padding="12,6"
+            Padding="14,6"
             Background="{DynamicResource Bg2Brush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,1,0,0"
             DockPanel.Dock="Bottom">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    FontSize="11"
-                    Foreground="{DynamicResource TextDimBrush}"
-                    Text="{Binding StatusBarText}" />
-            </Grid>
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="11"
+                Foreground="{DynamicResource TextDimBrush}"
+                Text="{Binding StatusBarText}"
+                TextTrimming="CharacterEllipsis" />
         </Border>
 
         <!--  主体区域  -->
@@ -67,35 +61,38 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!--  左侧：差异目录树  -->
             <views:DiffTreePane x:Name="DiffTreePaneControl" Grid.Column="0" />
 
-            <!--  分隔条  -->
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" />
+            <GridSplitter
+                Grid.Column="1"
+                Width="4"
+                HorizontalAlignment="Stretch"
+                Background="{DynamicResource BorderBrush}" />
 
-            <!--  右侧：双栏 Diff 编辑器  -->
             <Grid Grid.Column="2" Background="{DynamicResource BgBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="5" />
-                    <RowDefinition Height="280" MinHeight="220" />
+                    <RowDefinition x:Name="PathHistoryRow" Height="340" MinHeight="0" />
                 </Grid.RowDefinitions>
 
-                <!--  加载状态  -->
+                <!--  加载状态：只覆盖 DiffEditor（Row 1），文件头和按钮继续可见  -->
                 <Grid
-                    Grid.Row="0"
-                    Grid.RowSpan="2"
+                    Grid.Row="1"
                     Panel.ZIndex="10"
+                    Background="{DynamicResource BgBrush}"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock
+                        <ProgressBar
+                            Width="160"
+                            Height="3"
                             Margin="0,0,0,12"
-                            HorizontalAlignment="Center"
-                            FontSize="48"
-                            Text="⏳" />
+                            IsIndeterminate="True"
+                            Style="{DynamicResource ThinProgressBar}" />
                         <TextBlock
-                            FontSize="14"
+                            HorizontalAlignment="Center"
+                            FontSize="13"
                             Foreground="{DynamicResource TextDimBrush}"
                             Text="正在计算差异..." />
                     </StackPanel>
@@ -109,84 +106,116 @@
                     ResizeBehavior="PreviousAndNext"
                     ShowsPreview="True" />
 
-                <!--  文件头  -->
+                <!--  文件头：分上下两行，文件名独占一行  -->
                 <Border
                     Grid.Row="0"
-                    Padding="12,8"
+                    Padding="14,10"
                     Background="{DynamicResource Bg2Brush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,0,1">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource AccentBrush}"
-                                Text="{Binding SelectedNodeTitle}" />
-                            <TextBlock
-                                Margin="0,4,0,0"
-                                FontSize="10"
-                                Foreground="{DynamicResource TextDimBrush}"
-                                Text="{Binding SelectedNodeSubtitle}" />
-                        </StackPanel>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <StackPanel
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal">
-                            <Button
-                                Margin="0,0,8,0"
-                                Command="{Binding PreviousDiffCommand}"
-                                Content="↑ 上一处"
-                                IsEnabled="{Binding CanMoveToPreviousDiff}" />
-                            <Button
-                                Margin="0,0,8,0"
-                                Command="{Binding NextDiffCommand}"
-                                Content="↓ 下一处"
-                                IsEnabled="{Binding CanMoveToNextDiff}" />
-                            <Border
-                                Margin="0,0,8,0"
-                                Padding="8,2"
-                                Background="{DynamicResource Surface2Brush}"
-                                BorderBrush="{DynamicResource BorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="5">
+                        <!--  第 1 行：文件路径（最大字号）+ 右上角操作组  -->
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock
-                                    FontSize="10"
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
                                     FontWeight="SemiBold"
                                     Foreground="{DynamicResource AccentBrush}"
-                                    Text="{Binding CurrentDiffPositionText}" />
-                            </Border>
-                            <Button
-                                Command="{Binding OverwriteSelectedFileCommand}"
-                                Content="⬇ 下载此文件"
-                                Visibility="{Binding SelectedTreeNode.IsFile, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
+                                    Text="{Binding SelectedNodeTitle}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Margin="10,3,0,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="{DynamicResource TextDimBrush}"
+                                    Text="{Binding SelectedNodeSubtitle}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
 
+                            <StackPanel
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal">
+                                <Button
+                                    MinWidth="64"
+                                    Margin="0,0,6,0"
+                                    Padding="10,3"
+                                    Command="{Binding PreviousDiffCommand}"
+                                    Content="上一处"
+                                    FontSize="11"
+                                    IsEnabled="{Binding CanMoveToPreviousDiff}" />
+                                <Button
+                                    MinWidth="64"
+                                    Margin="0,0,6,0"
+                                    Padding="10,3"
+                                    Command="{Binding NextDiffCommand}"
+                                    Content="下一处"
+                                    FontSize="11"
+                                    IsEnabled="{Binding CanMoveToNextDiff}" />
+                                <Border
+                                    Margin="0,0,10,0"
+                                    Padding="8,2"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource Surface2Brush}"
+                                    BorderBrush="{DynamicResource AccentBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="4">
+                                    <TextBlock
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Foreground="{DynamicResource AccentBrush}"
+                                        Text="{Binding CurrentDiffPositionText}" />
+                                </Border>
+                                <Button
+                                    MinWidth="86"
+                                    Padding="10,3"
+                                    Command="{Binding OverwriteSelectedFileCommand}"
+                                    Content="下载此文件"
+                                    FontSize="11"
+                                    Foreground="{DynamicResource DangerBrush}"
+                                    IsEnabled="{Binding SelectedTreeNode.IsFile}"
+                                    ToolTip="将覆盖本地文件，请确认">
+                                    <Button.Style>
+                                        <Style BasedOn="{StaticResource ChromeButton}" TargetType="Button">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource DangerBgBrush}" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <!--  第 2 行：变更概览（+12 -3 之类），左对齐  -->
                         <Border
-                            Margin="0,6,0,0"
-                            Padding="7,4"
+                            Grid.Row="1"
+                            Margin="0,8,0,0"
+                            Padding="9,4"
+                            HorizontalAlignment="Left"
                             Background="{DynamicResource BgBrush}"
                             BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1"
                             CornerRadius="5"
                             Visibility="{Binding SelectedTreeNode, Converter={StaticResource NullToVisibility}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    FontSize="9"
-                                    FontWeight="SemiBold"
-                                    Foreground="{DynamicResource TextDimBrush}"
-                                    Text="{Binding DiffOverviewText}"
-                                    TextAlignment="Center" />
-                            </Grid>
+                            <TextBlock
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextDimBrush}"
+                                Text="{Binding DiffOverviewText}" />
                         </Border>
                     </Grid>
                 </Border>
@@ -205,28 +234,27 @@
                         VerticalScrollBarVisibility="Auto"
                         WordWrap="False" />
 
-                    <!--  二进制文件提示  -->
-                    <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVisibility}}">
+                    <Grid
+                        Background="{DynamicResource BgBrush}"
+                        Visibility="{Binding IsBinaryFile, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock
-                                Margin="0,0,0,12"
                                 HorizontalAlignment="Center"
-                                FontSize="48"
-                                Text="📦" />
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                FontSize="14"
-                                Foreground="{DynamicResource TextDimBrush}"
-                                Text="二进制文件" />
+                                FontSize="13"
+                                Foreground="{DynamicResource YellowBrush}"
+                                Text="二进制文件，无法对比文本内容" />
                         </StackPanel>
                     </Grid>
                 </Grid>
 
-                <!--  提交记录底部面板  -->
+                <!--  展开态：完整提交日志面板  -->
+                <Grid Grid.Row="3" Visibility="{Binding IsPathHistoryCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
                 <Border
-                    Grid.Row="3"
-                    Margin="0,0,0,0"
-                    Padding="12,10"
+                    Padding="12,8,12,10"
                     Background="{DynamicResource Bg2Brush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,1,0,0">
@@ -237,7 +265,8 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <!--  第 1 行：路径标题 + 当前筛选  -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -249,7 +278,7 @@
                                     Foreground="{DynamicResource TextDimBrush}"
                                     Text="{Binding PathHistoryTitle}" />
                                 <TextBlock
-                                    Margin="0,3,0,0"
+                                    Margin="0,2,0,0"
                                     FontSize="10"
                                     Foreground="{DynamicResource Accent2Brush}"
                                     Text="{Binding PathHistorySubtitle}" />
@@ -262,112 +291,104 @@
                                 Text="按时间筛选" />
                         </Grid>
 
+                        <!--  第 2 行：作者 + 时间（segmented control 风格，更紧凑）  -->
                         <Grid Grid.Row="1" Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                                 <TextBlock
                                     Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
                                     FontSize="10"
                                     Foreground="{DynamicResource TextDimBrush}"
                                     Text="作者" />
                                 <TextBox
-                                    Width="132"
-                                    Padding="8,4"
+                                    Width="180"
+                                    Padding="8,3"
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
                                     Text="{Binding PathHistoryAuthorFilter, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
-                            <StackPanel
-                                Grid.Column="1"
-                                Margin="12,0,0,0"
-                                VerticalAlignment="Center"
-                                Orientation="Horizontal">
-                                <TextBlock
-                                    Margin="0,0,6,0"
-                                    FontSize="10"
-                                    Foreground="{DynamicResource TextDimBrush}"
-                                    Text="时间" />
-                                <ListBox
-                                    MinHeight="24"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    ItemsSource="{Binding PathHistoryRecentDaysOptions}"
-                                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                    ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                    SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}">
-                                    <ListBox.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" />
-                                        </ItemsPanelTemplate>
-                                    </ListBox.ItemsPanel>
-                                    <ListBox.ItemContainerStyle>
-                                        <Style TargetType="ListBoxItem">
-                                            <Setter Property="Margin" Value="0,0,6,0" />
-                                            <Setter Property="Padding" Value="0" />
-                                            <Setter Property="Background" Value="Transparent" />
-                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                                            <Setter Property="BorderThickness" Value="0" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                                            <Setter Property="Focusable" Value="False" />
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="ListBoxItem">
-                                                        <Border
-                                                            x:Name="Root"
-                                                            MinWidth="46"
-                                                            Padding="10,4"
-                                                            Background="{DynamicResource Bg3Brush}"
-                                                            BorderBrush="{DynamicResource BorderBrush}"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            SnapsToDevicePixels="True">
-                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                        </Border>
-                                                        <ControlTemplate.Triggers>
-                                                            <Trigger Property="IsSelected" Value="True">
-                                                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource Surface2Brush}" />
-                                                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverBrush}" />
-                                                            </Trigger>
-                                                            <Trigger Property="IsEnabled" Value="False">
-                                                                <Setter Property="Opacity" Value="0.5" />
-                                                            </Trigger>
-                                                        </ControlTemplate.Triggers>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </ListBox.ItemContainerStyle>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock
-                                                FontSize="10"
-                                                FontWeight="SemiBold"
-                                                Text="{Binding}" />
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
+                            <ListBox
+                                Grid.Column="2"
+                                MinHeight="24"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ItemsSource="{Binding PathHistoryRecentDaysOptions}"
+                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                SelectedIndex="{Binding PathHistoryRecentDaysIndex, Mode=TwoWay}">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Margin" Value="0,0,4,0" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Focusable" Value="False" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border
+                                                        x:Name="Root"
+                                                        MinWidth="42"
+                                                        Padding="9,2"
+                                                        Background="{DynamicResource Bg3Brush}"
+                                                        BorderBrush="{DynamicResource BorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        SnapsToDevicePixels="True">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverBrush}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock
+                                            FontSize="10"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </Grid>
 
-                        <Grid Grid.Row="2" Margin="0,0,0,0">
+                        <!--  第 3 行：左 commit 列表 + 分隔条 + 右 commit 详情  -->
+                        <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1.25*" />
-                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="4" />
                                 <ColumnDefinition Width="0.95*" />
                             </Grid.ColumnDefinitions>
 
                             <Border
                                 Grid.Column="0"
-                                Padding="10,8"
+                                Padding="0"
                                 Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1"
@@ -378,9 +399,10 @@
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
 
-                                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                                    <Grid Grid.Row="0" Margin="10,6,10,4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock
@@ -390,14 +412,24 @@
                                             Text="提交历史" />
                                         <TextBlock
                                             Grid.Column="1"
+                                            Margin="0,0,8,0"
                                             VerticalAlignment="Center"
                                             FontSize="10"
                                             Foreground="{DynamicResource TextDimBrush}"
                                             Text="{Binding PathHistoryRecentDaysLabel}" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Padding="6,1"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding TogglePathHistoryCollapseCommand}"
+                                            Content="{Binding PathHistoryCollapseIcon}"
+                                            FontSize="10"
+                                            ToolTip="折叠/展开提交日志面板" />
                                     </Grid>
 
                                     <ListView
                                         Grid.Row="1"
+                                        Margin="6,0,6,6"
                                         Background="Transparent"
                                         BorderThickness="0"
                                         ItemsSource="{Binding PathHistoryItems}"
@@ -407,7 +439,7 @@
                                         Visibility="{Binding HasPathHistoryItems, Converter={StaticResource BoolToVisibility}}">
                                         <ListView.ItemContainerStyle>
                                             <Style TargetType="ListViewItem">
-                                                <Setter Property="Margin" Value="0,0,0,4" />
+                                                <Setter Property="Margin" Value="0" />
                                                 <Setter Property="Padding" Value="0" />
                                                 <Setter Property="Background" Value="Transparent" />
                                                 <Setter Property="BorderThickness" Value="0" />
@@ -415,56 +447,96 @@
                                                 <Setter Property="VerticalContentAlignment" Value="Stretch" />
                                                 <Setter Property="IsTabStop" Value="False" />
                                                 <Style.Triggers>
-                                                    <Trigger Property="IsSelected" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource MenuHoverBrush}" />
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                                                     </Trigger>
+                                                    <MultiTrigger>
+                                                        <MultiTrigger.Conditions>
+                                                            <Condition Property="IsSelected" Value="True" />
+                                                            <Condition Property="Selector.IsSelectionActive" Value="True" />
+                                                        </MultiTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                    </MultiTrigger>
+                                                    <MultiTrigger>
+                                                        <MultiTrigger.Conditions>
+                                                            <Condition Property="IsSelected" Value="True" />
+                                                            <Condition Property="Selector.IsSelectionActive" Value="False" />
+                                                        </MultiTrigger.Conditions>
+                                                        <Setter Property="Background" Value="{DynamicResource Bg3Brush}" />
+                                                    </MultiTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </ListView.ItemContainerStyle>
                                         <ListView.ItemTemplate>
                                             <DataTemplate DataType="{x:Type model:CommitHistoryItem}">
-                                                <Border
-                                                    Padding="10,7"
-                                                    Background="{DynamicResource Bg2Brush}"
-                                                    BorderBrush="{DynamicResource BorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="6">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="82" />
-                                                            <ColumnDefinition Width="116" />
-                                                            <ColumnDefinition Width="*" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <Grid Margin="0,0,0,1">
+                                                    <Border
+                                                        x:Name="AccentBar"
+                                                        Width="3"
+                                                        HorizontalAlignment="Left"
+                                                        Background="Transparent" />
+                                                    <Grid Margin="10,7,10,7">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <Grid Grid.Row="0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="68" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
                                                             <TextBlock
                                                                 FontFamily="{DynamicResource CodeFont}"
                                                                 FontSize="11"
                                                                 FontWeight="SemiBold"
                                                                 Foreground="{DynamicResource AccentBrush}"
-                                                                Text="{Binding ShortSha}" />
+                                                                Text="{Binding ShortSha}"
+                                                                ToolTip="{Binding Sha}" />
                                                             <TextBlock
-                                                                Margin="0,2,0,0"
-                                                                FontSize="9"
+                                                                Grid.Column="1"
+                                                                Margin="8,0,0,0"
+                                                                FontSize="11"
+                                                                Foreground="{DynamicResource TextBrush}"
+                                                                Text="{Binding MessageShort}"
+                                                                TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock
+                                                                Grid.Column="2"
+                                                                Margin="8,0,0,0"
+                                                                VerticalAlignment="Center"
+                                                                FontSize="10"
+                                                                Foreground="{DynamicResource TextDimBrush}"
+                                                                Text="{Binding CommitTimeRelative}"
+                                                                ToolTip="{Binding CommitTimeText}" />
+                                                        </Grid>
+                                                        <StackPanel
+                                                            Grid.Row="1"
+                                                            Margin="0,3,0,0"
+                                                            Orientation="Horizontal">
+                                                            <TextBlock
+                                                                FontSize="10"
+                                                                Foreground="{DynamicResource Accent2Brush}"
+                                                                Text="{Binding Author}"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                ToolTip="{Binding AuthorDisplay}" />
+                                                            <TextBlock
+                                                                Margin="6,0,0,0"
+                                                                FontSize="10"
+                                                                Foreground="{DynamicResource TextDimBrush}"
+                                                                Text="·" />
+                                                            <TextBlock
+                                                                Margin="6,0,0,0"
+                                                                FontSize="10"
                                                                 Foreground="{DynamicResource TextDimBrush}"
                                                                 Text="{Binding CommitTimeText}" />
                                                         </StackPanel>
-                                                        <TextBlock
-                                                            Grid.Column="1"
-                                                            VerticalAlignment="Center"
-                                                            FontSize="10"
-                                                            Foreground="{DynamicResource Accent2Brush}"
-                                                            Text="{Binding Author}"
-                                                            TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock
-                                                            Grid.Column="2"
-                                                            Margin="10,0,0,0"
-                                                            VerticalAlignment="Center"
-                                                            FontSize="11"
-                                                            Foreground="{DynamicResource TextBrush}"
-                                                            Text="{Binding MessageShort}"
-                                                            TextTrimming="CharacterEllipsis" />
                                                     </Grid>
-                                                </Border>
+                                                </Grid>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListViewItem}}" Value="True">
+                                                        <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ListView.ItemTemplate>
                                     </ListView>
@@ -475,51 +547,45 @@
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Visibility="{Binding HasPathHistoryItems, Converter={StaticResource InverseBoolToVisibility}}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock
-                                                Margin="0,0,0,6"
-                                                HorizontalAlignment="Center"
-                                                FontSize="22"
-                                                Text="🕘" />
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                FontSize="11"
-                                                Foreground="{DynamicResource TextDimBrush}"
-                                                Text="暂无提交记录" />
-                                        </StackPanel>
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontSize="11"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="暂无提交记录" />
                                     </Border>
 
-                                    <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock
-                                                Margin="0,0,0,6"
-                                                HorizontalAlignment="Center"
-                                                FontSize="18"
-                                                Text="⏳" />
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                FontSize="11"
-                                                Foreground="{DynamicResource TextDimBrush}"
-                                                Text="正在加载提交记录..." />
-                                        </StackPanel>
+                                    <Grid
+                                        Background="{DynamicResource BgBrush}"
+                                        Visibility="{Binding IsPathHistoryLoading, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontSize="11"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="正在加载提交记录..." />
                                     </Grid>
                                 </Grid>
                             </Border>
 
                             <GridSplitter
                                 Grid.Column="1"
+                                Width="4"
                                 HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch" />
+                                Background="{DynamicResource BorderBrush}"
+                                ResizeBehavior="PreviousAndNext"
+                                ShowsPreview="True" />
 
                             <Border
                                 Grid.Column="2"
-                                Padding="10,8"
+                                Padding="12,8"
                                 Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="6">
                                 <Grid>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*" />
@@ -530,79 +596,177 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel>
+                                        <TextBlock
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            Foreground="{DynamicResource AccentBrush}"
+                                            Text="{Binding SelectedCommitTitle}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Padding="6,1"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding CopyShaToClipboardCommand}"
+                                            CommandParameter="{Binding SelectedCommitFullSha}"
+                                            Content="复制 SHA"
+                                            FontSize="10" />
+                                    </Grid>
+
+                                    <!--  元数据：作者邮箱 / 相对时间 / 完整 SHA / 父提交  -->
+                                    <Grid Grid.Row="1" Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock
+                                            Grid.Row="0"
+                                            Grid.Column="0"
+                                            Margin="0,0,8,2"
+                                            FontSize="10"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="作者" />
+                                        <TextBlock
+                                            Grid.Row="0"
+                                            Grid.Column="1"
+                                            FontSize="10"
+                                            Foreground="{DynamicResource TextBrush}"
+                                            Text="{Binding SelectedCommitAuthorEmail}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            Grid.Row="1"
+                                            Grid.Column="0"
+                                            Margin="0,0,8,2"
+                                            FontSize="10"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="时间" />
+                                        <StackPanel
+                                            Grid.Row="1"
+                                            Grid.Column="1"
+                                            Orientation="Horizontal">
                                             <TextBlock
-                                                FontSize="11"
-                                                FontWeight="SemiBold"
-                                                Foreground="{DynamicResource AccentBrush}"
-                                                Text="{Binding SelectedCommitTitle}" />
+                                                FontSize="10"
+                                                Foreground="{DynamicResource TextBrush}"
+                                                Text="{Binding SelectedCommitRelativeTime}" />
                                             <TextBlock
-                                                Margin="0,2,0,0"
+                                                Margin="6,0,0,0"
                                                 FontSize="10"
                                                 Foreground="{DynamicResource TextDimBrush}"
                                                 Text="{Binding SelectedCommitDetail.Commit.CommitTimeText}" />
                                         </StackPanel>
                                         <TextBlock
-                                            Grid.Column="1"
-                                            VerticalAlignment="Center"
+                                            Grid.Row="2"
+                                            Grid.Column="0"
+                                            Margin="0,0,8,0"
                                             FontSize="10"
                                             Foreground="{DynamicResource TextDimBrush}"
-                                            Text="{Binding SelectedCommitDetail.Commit.Sha}" />
+                                            Text="父提交" />
+                                        <TextBlock
+                                            Grid.Row="2"
+                                            Grid.Column="1"
+                                            FontSize="10"
+                                            FontFamily="{DynamicResource CodeFont}"
+                                            Foreground="{DynamicResource TextBrush}"
+                                            Text="{Binding SelectedCommitParentShas}" />
                                     </Grid>
 
                                     <TextBlock
-                                        Grid.Row="1"
-                                        Margin="0,6,0,0"
+                                        Grid.Row="2"
+                                        Margin="0,8,0,0"
+                                        FontFamily="{DynamicResource CodeFont}"
                                         FontSize="11"
                                         Foreground="{DynamicResource TextBrush}"
                                         Text="{Binding SelectedCommitDetail.Commit.Message}"
                                         TextWrapping="Wrap" />
 
-                                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                                    <Grid Grid.Row="3" Margin="0,10,0,0">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <TextBlock
+                                            Margin="0,0,0,4"
                                             FontSize="10"
                                             FontWeight="SemiBold"
                                             Foreground="{DynamicResource TextDimBrush}"
                                             Text="影响文件" />
-                                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                        <ScrollViewer
+                                            Grid.Row="1"
+                                            VerticalScrollBarVisibility="Auto">
                                             <ItemsControl ItemsSource="{Binding SelectedCommitDetail.Files}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="{x:Type model:CommitFileChangeItem}">
-                                                        <Grid Margin="0,4,0,0">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="22" />
-                                                                <ColumnDefinition Width="*" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <Border
-                                                                Width="18"
-                                                                Height="18"
-                                                                HorizontalAlignment="Center"
-                                                                VerticalAlignment="Center"
-                                                                Background="{DynamicResource BgBrush}"
-                                                                BorderBrush="{DynamicResource BorderBrush}"
-                                                                BorderThickness="1"
-                                                                CornerRadius="4">
+                                                        <Border
+                                                            x:Name="RowRoot"
+                                                            Margin="0,1,0,0"
+                                                            Padding="8,4,4,4"
+                                                            Background="Transparent"
+                                                            BorderBrush="Transparent"
+                                                            BorderThickness="2,0,0,0"
+                                                            CornerRadius="3"
+                                                            Cursor="Hand"
+                                                            MouseLeftButtonUp="OnCommitFileClick"
+                                                            ToolTip="点击跳转到该文件的 diff">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
                                                                 <TextBlock
+                                                                    Width="14"
                                                                     HorizontalAlignment="Center"
                                                                     VerticalAlignment="Center"
+                                                                    FontFamily="{DynamicResource CodeFont}"
                                                                     FontSize="10"
                                                                     FontWeight="SemiBold"
                                                                     Foreground="{DynamicResource Accent2Brush}"
                                                                     Text="{Binding StatusCode}" />
-                                                            </Border>
-                                                            <TextBlock
-                                                                Grid.Column="1"
-                                                                Margin="8,0,0,0"
-                                                                VerticalAlignment="Center"
-                                                                FontSize="10"
-                                                                Foreground="{DynamicResource TextDimBrush}"
-                                                                Text="{Binding DisplayPath}"
-                                                                TextTrimming="CharacterEllipsis" />
-                                                        </Grid>
+                                                                <TextBlock
+                                                                    Grid.Column="1"
+                                                                    Margin="6,0,0,0"
+                                                                    VerticalAlignment="Center"
+                                                                    FontSize="10"
+                                                                    Foreground="{DynamicResource TextBrush}"
+                                                                    Text="{Binding DisplayPath}"
+                                                                    TextTrimming="CharacterEllipsis" />
+                                                                <StackPanel
+                                                                    x:Name="ActionRow"
+                                                                    Grid.Column="2"
+                                                                    Margin="6,0,0,0"
+                                                                    VerticalAlignment="Center"
+                                                                    Orientation="Horizontal"
+                                                                    Visibility="Collapsed">
+                                                                    <Button
+                                                                        Padding="6,1"
+                                                                        VerticalAlignment="Center"
+                                                                        Command="{Binding DataContext.CopyFilePathCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding Path}"
+                                                                        Content="复制"
+                                                                        FontSize="9"
+                                                                        ToolTip="复制相对路径" />
+                                                                    <Button
+                                                                        Margin="4,0,0,0"
+                                                                        Padding="6,1"
+                                                                        VerticalAlignment="Center"
+                                                                        Command="{Binding DataContext.OpenFileInExplorerCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        CommandParameter="{Binding Path}"
+                                                                        Content="打开"
+                                                                        FontSize="9"
+                                                                        ToolTip="在文件管理器中定位" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                        <DataTemplate.Triggers>
+                                                            <Trigger SourceName="RowRoot" Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="RowRoot" Property="Background" Value="{DynamicResource HoverBrush}" />
+                                                                <Setter TargetName="ActionRow" Property="Visibility" Value="Visible" />
+                                                            </Trigger>
+                                                        </DataTemplate.Triggers>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
@@ -610,44 +774,78 @@
                                     </Grid>
 
                                     <Border
+                                        Grid.RowSpan="4"
+                                        Panel.ZIndex="1"
                                         Background="{DynamicResource BgBrush}"
                                         BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
-                                        Visibility="{Binding SelectedCommitDetail, Converter={StaticResource NullToVisibility}}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock
-                                                Margin="0,0,0,6"
-                                                HorizontalAlignment="Center"
-                                                FontSize="22"
-                                                Text="⌁" />
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                FontSize="11"
-                                                Foreground="{DynamicResource TextDimBrush}"
-                                                Text="点击左侧提交查看详情" />
-                                        </StackPanel>
+                                        Visibility="{Binding SelectedPathHistoryItem, Converter={StaticResource InverseNullToVisibility}, FallbackValue=Visible}">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontSize="11"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="点击左侧提交查看详情" />
                                     </Border>
 
-                                    <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock
-                                                Margin="0,0,0,6"
-                                                HorizontalAlignment="Center"
-                                                FontSize="18"
-                                                Text="⏳" />
-                                            <TextBlock
-                                                HorizontalAlignment="Center"
-                                                FontSize="11"
-                                                Foreground="{DynamicResource TextDimBrush}"
-                                                Text="正在加载提交详情..." />
-                                        </StackPanel>
+                                    <Grid
+                                        Grid.RowSpan="4"
+                                        Panel.ZIndex="20"
+                                        Background="{DynamicResource BgBrush}"
+                                        Visibility="{Binding IsCommitDetailLoading, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontSize="11"
+                                            Foreground="{DynamicResource TextDimBrush}"
+                                            Text="正在加载提交详情..." />
                                     </Grid>
                                 </Grid>
                             </Border>
                         </Grid>
                     </Grid>
                 </Border>
+
+                <!--  折叠态：紧凑标题栏，悬浮在底部  -->
+                <Border
+                    Grid.Row="3"
+                    Padding="14,5,14,5"
+                    Background="{DynamicResource Bg2Brush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    Visibility="{Binding IsPathHistoryCollapsed, Converter={StaticResource BoolToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource TextDimBrush}"
+                            Text="提交日志" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{DynamicResource Accent2Brush}"
+                            Text="{Binding PathHistorySubtitle}"
+                            TextTrimming="CharacterEllipsis" />
+                        <Button
+                            Grid.Column="2"
+                            Padding="6,1"
+                            VerticalAlignment="Center"
+                            Command="{Binding TogglePathHistoryCollapseCommand}"
+                            Content="{Binding PathHistoryCollapseIcon}"
+                            FontSize="10"
+                            ToolTip="展开提交日志面板" />
+                    </Grid>
+                </Border>
+                </Grid>
             </Grid>
         </Grid>
     </DockPanel>

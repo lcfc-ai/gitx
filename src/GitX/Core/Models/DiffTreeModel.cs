@@ -177,6 +177,23 @@ public class DiffTreeModel
         }
     }
 
+    /// <summary>
+    /// 文件夹统计悬浮提示：分项列出
+    /// </summary>
+    public string FolderStatsTooltip
+    {
+        get
+        {
+            if (IsFile) return FullPath;
+            var parts = new List<string>();
+            if (AddedFileCount > 0) parts.Add($"新增 {AddedFileCount}");
+            if (DeletedFileCount > 0) parts.Add($"删除 {DeletedFileCount}");
+            if (ModifiedFileCount > 0) parts.Add($"修改 {ModifiedFileCount}");
+            if (RenamedFileCount > 0) parts.Add($"重命名 {RenamedFileCount}");
+            return parts.Count > 0 ? string.Join(" · ", parts) : "无变更";
+        }
+    }
+
     private ChangeKind GetDominantChangeType()
     {
         var counts = new Dictionary<ChangeKind, int>

@@ -46,8 +46,8 @@ public partial class BranchSelectViewModel : ObservableObject
         try
         {
             IsLoading = true;
-            await Task.Run(() => _gitService.FetchRemote());
-
+            // 打开分支选择窗口时不自动 fetch，避免用户没准备好就发起网络请求
+            // 远端最新需要时由用户在主窗口点「拉取最新」按钮触发
             var all = _gitService.GetAllBranches();
             Branches = new ObservableCollection<BranchModel>(all);
             FilteredBranches = new ObservableCollection<BranchModel>(all);

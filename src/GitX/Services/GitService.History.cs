@@ -45,6 +45,8 @@ public partial class GitService
 
     /// <summary>
     /// 获取某次提交的详细变更。
+    /// 优先 git CLI（git show --name-status -z），失败回退 LibGit2Sharp。
+    /// CLI 路径在历史 commit 涉及大量文件时显著快于 LibGit2Sharp.Diff.Compare。
     /// </summary>
     public CommitDetailResult? GetCommitDetail(string sha)
     {
@@ -62,35 +64,43 @@ public partial class GitService
                 return null;
             }
 
-            var files = new List<CommitFileChangeItem>();
-            if (!commit.Parents.Any())
+            // 文件列表：CLI 优先，失败回退 LibGit2Sharp
+            var files = GetCommitFilesPreferCli(sha);
+            if (files == null)
             {
-                foreach (var entry in EnumerateTreeEntries(commit.Tree))
+                files = new List<CommitFileChangeItem>();
+                if (!commit.Parents.Any())
                 {
-                    if (entry.TargetType == TreeEntryTargetType.Blob)
+                    foreach (var entry in EnumerateTreeEntries(commit.Tree))
                     {
-                        files.Add(new CommitFileChangeItem
+                        if (entry.TargetType == TreeEntryTargetType.Blob)
                         {
-                            Path = entry.Path,
-                            Status = ChangeKind.Added
-                        });
+                            files.Add(new CommitFileChangeItem
+                            {
+                                Path = entry.Path,
+                                Status = ChangeKind.Added
+                            });
+                        }
                     }
                 }
-            }
-            else
-            {
-                foreach (var parent in commit.Parents)
+                else
                 {
-                    var changes = _repo.Diff.Compare<TreeChanges>(parent.Tree, commit.Tree);
-                    foreach (var change in changes)
+                    foreach (var parent in commit.Parents)
                     {
-                        files.Add(new CommitFileChangeItem
+                        var changes = _repo.Diff.Compare<TreeChanges>(parent.Tree, commit.Tree);
+                        foreach (var change in changes)
                         {
-                            Path = change.Path,
-                            OldPath = change.OldPath,
-                            Status = change.Status
-                        });
+                            files.Add(new CommitFileChangeItem
+                            {
+                                Path = change.Path,
+                                OldPath = change.OldPath,
+                                Status = change.Status
+                            });
+                        }
                     }
+                    files = files
+                        .DistinctBy(x => $"{x.Status}:{x.OldPath}:{x.Path}")
+                        .ToList();
                 }
             }
 
@@ -100,13 +110,96 @@ public partial class GitService
                 {
                     Sha = commit.Sha,
                     Author = commit.Author.Name,
+                    AuthorEmail = commit.Author.Email ?? string.Empty,
                     CommitTime = commit.Committer.When,
-                    Message = commit.Message?.TrimEnd() ?? string.Empty
+                    Message = commit.Message?.TrimEnd() ?? string.Empty,
+                    ParentShas = commit.Parents.Select(p => p.Sha).ToArray()
                 },
                 Files = files
-                    .DistinctBy(x => $"{x.Status}:{x.OldPath}:{x.Path}")
-                    .ToList()
             };
+        }
+    }
+
+    /// <summary>
+    /// 用 git show --name-status -z &lt;sha&gt; 快速获取文件列表。
+    /// 失败返回 null（调用方应回退到 LibGit2Sharp）。
+    /// </summary>
+    private List<CommitFileChangeItem>? GetCommitFilesPreferCli(string sha)
+    {
+        try
+        {
+            var gitPath = FindGitExecutable();
+            if (gitPath == null) return null;
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = gitPath,
+                Arguments = $"show --name-status -z --no-renames --format= {sha}",
+                WorkingDirectory = _repoPath,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8
+            };
+
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc == null) return null;
+
+            var stdout = proc.StandardOutput.ReadToEnd();
+            proc.StandardError.ReadToEnd();
+            proc.WaitForExit(30000);
+            if (!proc.HasExited) { try { proc.Kill(); } catch { } return null; }
+            if (proc.ExitCode != 0) return null;
+
+            // 解析 NUL 分隔的 status+path 列表
+            // 格式：M\0path\0A\0newpath\0D\0path\0R<score>\0oldpath\0newpath\0
+            // --no-renames 后没有 R 行，避免 old/new 配对复杂度
+            var tokens = stdout.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+            var result = new List<CommitFileChangeItem>(tokens.Length / 2 + 1);
+            for (var i = 0; i < tokens.Length; i++)
+            {
+                var token = tokens[i];
+                if (string.IsNullOrEmpty(token) || token.Length < 1) continue;
+
+                // R<score>/C<score> 是 2 段，旧路径+新路径
+                var head = token[0];
+                if (head == 'R' || head == 'C')
+                {
+                    if (i + 2 >= tokens.Length) break;
+                    var oldPath = tokens[++i];
+                    var newPath = tokens[++i];
+                    result.Add(new CommitFileChangeItem
+                    {
+                        Path = newPath,
+                        OldPath = oldPath,
+                        Status = head == 'R' ? ChangeKind.Renamed : ChangeKind.Copied
+                    });
+                }
+                else
+                {
+                    if (i + 1 >= tokens.Length) break;
+                    var path = tokens[++i];
+                    var kind = head switch
+                    {
+                        'A' => ChangeKind.Added,
+                        'D' => ChangeKind.Deleted,
+                        'M' => ChangeKind.Modified,
+                        'T' => ChangeKind.TypeChanged,
+                        _ => ChangeKind.Modified
+                    };
+                    result.Add(new CommitFileChangeItem
+                    {
+                        Path = path,
+                        Status = kind
+                    });
+                }
+            }
+            return result;
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -137,7 +230,7 @@ public partial class GitService
             psi.ArgumentList.Add(branchName);
             psi.ArgumentList.Add($"--max-count={maxCount}");
             psi.ArgumentList.Add("--date=iso-strict");
-            psi.ArgumentList.Add("--pretty=format:%H%x1f%an%x1f%ad%x1f%s%x1e");
+            psi.ArgumentList.Add("--pretty=format:%H%x1f%an%x1f%ae%x1f%ad%x1f%P%x1f%s%x1e");
             if (recentDays is > 0)
             {
                 psi.ArgumentList.Add($"--since={recentDays.Value}.days");
@@ -246,8 +339,12 @@ public partial class GitService
 
             var sha = fields[0].Trim();
             var author = fields[1].Trim();
-            var message = fields[3].Trim();
-            if (!DateTimeOffset.TryParse(fields[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when))
+            var authorEmail = fields.Length > 2 ? fields[2].Trim() : string.Empty;
+            var message = fields.Length > 5 ? fields[5].Trim() : (fields.Length > 3 ? fields[3].Trim() : string.Empty);
+            var parents = fields.Length > 4
+                ? fields[4].Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                : Array.Empty<string>();
+            if (!DateTimeOffset.TryParse(fields.Length > 3 ? fields[3] : string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when))
             {
                 when = DateTimeOffset.MinValue;
             }
@@ -256,8 +353,10 @@ public partial class GitService
             {
                 Sha = sha,
                 Author = author,
+                AuthorEmail = authorEmail,
                 CommitTime = when,
-                Message = message
+                Message = message,
+                ParentShas = parents
             });
         }
 
@@ -270,8 +369,10 @@ public partial class GitService
         {
             Sha = commit.Sha,
             Author = commit.Author.Name,
+            AuthorEmail = commit.Author.Email ?? string.Empty,
             CommitTime = commit.Committer.When,
-            Message = commit.MessageShort ?? string.Empty
+            Message = commit.MessageShort ?? string.Empty,
+            ParentShas = commit.Parents.Select(p => p.Sha).ToArray()
         };
     }
 

@@ -4,5 +4,7 @@
     <helpers:BoolToBranchIconConverter x:Key="BoolToBranchIcon" />
     <helpers:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+    <helpers:InverseBoolConverter x:Key="InverseBool" />
     <helpers:NullToVisibilityConverter x:Key="NullToVisibility" />
+    <helpers:InverseNullToVisibilityConverter x:Key="InverseNullToVisibility" />
 </ResourceDictionary>

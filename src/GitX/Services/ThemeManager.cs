@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.Json;
 using System.Windows;
 
 namespace GitX.Services;
@@ -20,6 +22,11 @@ public static class ThemeManager
     private static Application? _application;
     private static ResourceDictionary? _activeThemeDictionary;
 
+    private static readonly string _configPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "GitX",
+        "config.json");
+
     public static IReadOnlyList<ThemeDefinition> Themes => _themes;
 
     public static string CurrentThemeKey { get; private set; } = VisualStudioDarkKey;
@@ -27,6 +34,40 @@ public static class ThemeManager
     public static void Initialize(Application application)
     {
         _application = application;
+    }
+
+    public static void SaveThemePreference(string key)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(_configPath);
+            if (dir != null) Directory.CreateDirectory(dir);
+            var json = JsonSerializer.Serialize(new { theme = key });
+            File.WriteAllText(_configPath, json);
+        }
+        catch
+        {
+            // 保存失败不影响使用
+        }
+    }
+
+    public static string? LoadThemePreference()
+    {
+        try
+        {
+            if (!File.Exists(_configPath)) return null;
+            var json = File.ReadAllText(_configPath);
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("theme", out var themeProp))
+            {
+                return themeProp.GetString();
+            }
+        }
+        catch
+        {
+            // 读取失败返回 null，使用默认主题
+        }
+        return null;
     }
 
     public static void ApplyTheme(string key)
@@ -54,5 +95,6 @@ public static class ThemeManager
         merged.Add(themeDictionary);
         _activeThemeDictionary = themeDictionary;
         CurrentThemeKey = theme.Key;
+        SaveThemePreference(theme.Key);
     }
 }

@@ -176,6 +176,18 @@ public class CacheLogService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 清空全部 Blob 缓存：用于 fetch 远端后，远端 refs 已变化，旧的 Blob 内容可能 stale。
+    /// </summary>
+    public void ClearBlobCache()
+    {
+        lock (_cacheLock)
+        {
+            _blobCache.Clear();
+            _lruKeys.Clear();
+        }
+    }
+
     public void Dispose()
     {
         lock (_cacheLock)

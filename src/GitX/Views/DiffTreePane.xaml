@@ -31,9 +31,9 @@
                                 BorderThickness="0"
                                 CornerRadius="4"
                                 MouseLeftButtonDown="OnDiffTreeItemRowMouseLeftButtonDown">
-                                <Grid MinHeight="28">
+                                <Grid MinHeight="30">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2" />
+                                        <ColumnDefinition Width="3" />
                                         <ColumnDefinition Width="14" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
@@ -100,14 +100,22 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowHoverBrush}" />
                             </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True" />
+                                    <Condition Property="Selector.IsSelectionActive" Value="True" />
+                                </MultiTrigger.Conditions>
                                 <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowSelectedBrush}" />
                                 <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
-                            <Trigger Property="Selector.IsSelectionActive" Value="False">
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True" />
+                                    <Condition Property="Selector.IsSelectionActive" Value="False" />
+                                </MultiTrigger.Conditions>
                                 <Setter TargetName="RowChrome" Property="Background" Value="{DynamicResource TreeRowInactiveSelectedBrush}" />
-                                <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            </Trigger>
+                                <Setter TargetName="AccentBar" Property="Background" Value="{DynamicResource TextDimBrush}" />
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

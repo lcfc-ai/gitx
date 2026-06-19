@@ -1,3 +1,4 @@
+using GitX.Core.Models;
 using GitX.ViewModels;
 using System.Windows;
 using System.Windows.Input;
@@ -38,6 +39,7 @@ public partial class MainWindow : ThemedWindow
         {
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
             SyncUnifiedDiffText();
+            SyncPathHistoryRowHeight();
         }
     }
 
@@ -55,6 +57,18 @@ public partial class MainWindow : ThemedWindow
         {
             Dispatcher.BeginInvoke(ScrollToCurrentDiffLine);
         }
+        else if (e.PropertyName == nameof(MainWindowViewModel.IsPathHistoryCollapsed))
+        {
+            Dispatcher.BeginInvoke(SyncPathHistoryRowHeight);
+        }
+    }
+
+    private void SyncPathHistoryRowHeight()
+    {
+        if (_viewModel == null || PathHistoryRow == null) return;
+        PathHistoryRow.Height = _viewModel.IsPathHistoryCollapsed
+            ? new GridLength(1, GridUnitType.Auto)
+            : new GridLength(340, GridUnitType.Pixel);
     }
 
     private void SyncUnifiedDiffText()
@@ -134,5 +148,38 @@ public partial class MainWindow : ThemedWindow
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
         (_viewModel as IDisposable)?.Dispose();
+    }
+
+    private void OnCommitFileClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel == null) return;
+        if (sender is not FrameworkElement fe) return;
+        if (fe.DataContext is not CommitFileChangeItem file) return;
+        if (_viewModel.NavigateToCommitFileCommand.CanExecute(file))
+        {
+            _viewModel.NavigateToCommitFileCommand.Execute(file);
+            // 跳转后短暂闪一下状态：成功高亮绿色，失败高亮黄色
+            FlashBorder(fe, found: _viewModel.LastNavigationFound);
+        }
+    }
+
+    private void FlashBorder(FrameworkElement fe, bool found)
+    {
+        if (fe is not System.Windows.Controls.Border border) return;
+        var original = border.BorderBrush;
+        var flashBrush = found
+            ? (System.Windows.Media.Brush)Application.Current.Resources["AccentBrush"]
+            : (System.Windows.Media.Brush)Application.Current.Resources["YellowBrush"];
+        border.BorderBrush = flashBrush;
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(700)
+        };
+        timer.Tick += (s, args) =>
+        {
+            timer.Stop();
+            border.BorderBrush = original;
+        };
+        timer.Start();
     }
 }
